@@ -115,9 +115,8 @@ describe("Uniswap V2++", function () {
     })
 
 
-    describe.only("Swaps", function () {
+    describe("Swaps", function () {
         
-
         let uniswapV2Router02: Contract;
         let uniswapV2Pair: Contract;
         let token1: Contract;

@@ -7,17 +7,8 @@ import { IUniswapV2Pair } from "./interfaces/IUniswapV2Pair.sol";
 import { IUniswapV2Router02 } from "./interfaces/IUniswapV2Router02.sol";
 import { UniswapV2Library } from "./libraries/UniswapV2Library.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
-
-
-// The following changes must be made:
-
-// - You must use solidity 0.8.0 or higher, don’t use SafeMath
-// - Use an existing fixed point library, but don’t use the Uniswap one.
-// - Use Openzeppelin’s or Solmate’s safeTransfer instead of building it from scratch like Unisawp does
-// - Instead of implementing a flash swap the way Uniswap does, use EIP 3156. ********Be very careful at which point you update the reserves!********
 
 
 contract UniswapV2Router02 is IUniswapV2Router02 {

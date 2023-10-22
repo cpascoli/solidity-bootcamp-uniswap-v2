@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.19;
 
+/// @notice A library to handle Fixed Point numbers  (https://en.wikipedia.org/wiki/Q_(number_format))
+/// https://gist.github.com/alexroan/629172728f82cb5c88554896163b35a0
+/// https://github.com/compound-finance/open-oracle/blob/d0a0d0301bff08457d9dfc5861080d3124d079cd/contracts/Uniswap/UniswapLib.sol#L6library
 
 library UQ112x112 {
 
+    // range: [0, 2**112 - 1]
+    // resolution: 1 / 2**112
     struct uq112x112 {
         uint224 _x;
     }
 
     /// @notice Returns a uq112x112 which represents the ratio of the numerator to the denominator.
-    /// @dev Equivalent to encode(numerator).div(denominator)
+    /// @dev Equivalent to encode(numerator).div(denominator).
     function fraction(uint112 numerator, uint112 denominator) internal pure returns (uq112x112 memory) {
         require(denominator > 0, "FixedPoint: DIV_BY_ZERO");
 
@@ -25,8 +30,6 @@ library UQ112x112 {
         //  (x) / 2 ** (112 - lg(1e18))
         return uint(self._x) / 5192296858534816;
     }
-
-
 }
 
 

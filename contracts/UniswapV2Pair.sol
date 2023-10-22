@@ -12,7 +12,6 @@ import { UQ112x112 } from "./libraries/UQ112x112.sol";
 import { UniswapV2ERC20 } from "./UniswapV2ERC20.sol";
 
 
-
 contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
 
     uint public constant MINIMUM_LIQUIDITY = 10**3;
@@ -71,14 +70,11 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         return super.permit(owner, spender, value, deadline, v, r, s);
     }
 
-
     function getReserves() public view returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) {
         _reserve0 = reserve0;
         _reserve1 = reserve1;
         _blockTimestampLast = blockTimestampLast;
     }
-
-
 
     // called once by the factory at time of deployment
     function initialize(address _token0, address _token1) external {
