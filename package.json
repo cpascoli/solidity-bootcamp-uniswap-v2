@@ -1,0 +1,38 @@
+{
+  "name": "week2",
+  "version": "0.0.1",
+  "description": "Advanced Solidity bootcamp - week 2 assignments",
+  "main": "index.js",
+  "scripts": {
+    "clean": "npx hardhat clean",
+    "chain": "npx hardhat node",
+    "flatten": "npx hardhat flatten",
+    "test": "npx hardhat test",
+    "gas-test": "npx hardhat test test/gas_tests/gas_tests",
+    "doc": "npx hardhat docgen",
+    "deploy": "env $(cat .env) npx hardhat run --network goerli scripts/deploy_aucction_v1.ts"
+  },
+  "author": "Carlo Pascoli",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "@nomiclabs/hardhat-ethers": "^2.2.2",
+    "@nomiclabs/hardhat-etherscan": "^3.1.5",
+    "chai": "^4.3.7",
+    "ethereum-waffle": "^3.4.4",
+    "ethers": "^5.7.2",
+    "hardhat-abi-exporter": "^2.10.1",
+    "hardhat-docgen": "^1.3.0"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
+    "@openzeppelin/contracts": "^4.9.3",
+    "@openzeppelin/contracts-upgradeable": "^4.9.3",
+    "@openzeppelin/hardhat-upgrades": "^1.21.0",
+    "@openzeppelin/merkle-tree": "^1.0.5",
+    "@openzeppelin/test-helpers": "^0.5.16",
+    "dotenv": "^16.3.1",
+    "hardhat": "^2.12.6",
+    "hardhat-erc1820": "^0.1.0"
+  }
+}
