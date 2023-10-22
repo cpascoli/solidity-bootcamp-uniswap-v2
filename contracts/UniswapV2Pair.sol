@@ -5,14 +5,18 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { IUniswapV2Pair } from "./interfaces/IUniswapV2Pair.sol";
-import { IUniswapV2Factory } from "./interfaces/IUniswapV2Factory.sol";
-import { IUniswapV2Callee } from  "./interfaces/IUniswapV2Callee.sol";
+import { IUniswapV2Pair } from "./interfaces/uniswap/IUniswapV2Pair.sol";
+import { IUniswapV2Factory } from "./interfaces/uniswap/IUniswapV2Factory.sol";
+import { IUniswapV2Callee } from  "./interfaces/uniswap/IUniswapV2Callee.sol";
+
+import { IERC3156FlashLender } from "./interfaces/flashloan/IERC3156FlashLender.sol";
+import { IERC3156FlashBorrower } from "./interfaces/flashloan/IERC3156FlashBorrower.sol";
+
 import { UQ112x112 } from "./libraries/UQ112x112.sol";
 import { UniswapV2ERC20 } from "./UniswapV2ERC20.sol";
 
 
-contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
+contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
 
     uint public constant MINIMUM_LIQUIDITY = 10**3;
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
@@ -178,6 +182,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
 
         uint balance0;
         uint balance1;
+
         { // scope for _token{0,1}, avoids stack too deep errors
         address _token0 = token0;
         address _token1 = token1;
@@ -188,9 +193,11 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
         }
+
         uint amount0In = balance0 > _reserve0 - amount0Out ? balance0 - (_reserve0 - amount0Out) : 0;
         uint amount1In = balance1 > _reserve1 - amount1Out ? balance1 - (_reserve1 - amount1Out) : 0;
         require(amount0In > 0 || amount1In > 0, 'UniswapV2: INSUFFICIENT_INPUT_AMOUNT');
+
         { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
         uint balance0Adjusted = (balance0 * 1000) - (amount0In * 3);
         uint balance1Adjusted = (balance1 * 1000) - (amount1In * 3);
@@ -212,5 +219,79 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     // force reserves to match balances
     function sync() external lock {
         _update(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)), reserve0, reserve1);
+    }
+
+
+    ///// IERC3156FlashLender /////
+
+    /**
+     * @dev The amount of currency available to be lent.
+     * @param token The loan currency.
+     * @return The amount of `token` that can be borrowed.
+     */
+    function maxFlashLoan(address token) external view returns (uint256) {
+        return _maxFlashLoan(token);
+    }
+
+    /**
+     * @dev The fee to be charged for a given loan.
+     * @param token The loan currency.
+     * @param amount The amount of tokens lent.
+     * @return The amount of `token` to be charged for the loan, on top of the returned principal.
+     */
+    function flashFee(address token, uint256 amount) external view returns (uint256) {
+        return _flashFee(token, amount);
+    }
+
+    /**
+     * @dev Initiate a flash loan.
+     * @param receiver The receiver of the tokens in the loan, and the receiver of the callback.
+     * @param token The loan currency.
+     * @param amount The amount of tokens lent.
+     * @param data Arbitrary data structure, intended to contain user-defined parameters.
+     */
+    function flashLoan(
+        IERC3156FlashBorrower receiver,
+        address token,
+        uint256 amount,
+        bytes calldata data
+    ) external returns (bool) {
+
+        // _flashFee reverts if token is not supported
+        uint256 fee = _flashFee(token, amount);
+        require (amount <= _maxFlashLoan(token), "Not enough reserves");
+
+        // token is token0 or token1
+        IERC20 loanToken = token == token0 ? IERC20(token0) : IERC20(token1);
+
+        // transfer the loan
+        SafeERC20.safeTransfer(loanToken, address(receiver), amount);
+
+        // canll IERC3156 callback
+        require(
+            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
+            "IERC3156: Callback failed"
+        );
+
+        // get the loan + fee back
+        SafeERC20.safeTransferFrom(loanToken, address(receiver), address(this),  amount + fee);
+
+        return true;
+    }
+
+
+    function _flashFee(address token, uint256 amount) private view returns(uint256) {
+        require(token == token0 || token == token1, "Token not supported");
+
+        return amount * 3 / 1000; // 0.3% fee
+    }
+
+    function _maxFlashLoan(address token) private view returns (uint256 reserve) {
+        if (token == token0) {
+            reserve = reserve0;
+        }
+        if (token == token1) {
+            reserve = reserve1;
+        }
     }
 }

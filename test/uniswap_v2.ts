@@ -1,29 +1,29 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { deployUniswapPair, toUnits, toWei, getLastBlockTimestamp } from "./helpers/test_helpers";
+import { deployContracts, toUnits, toWei, getLastBlockTimestamp } from "./helpers/test_helpers";
 import { Contract } from "ethers";
-
 
 
 describe("Uniswap V2++", function () {
 
     describe("Pair Contract", function () {
         it("has the expected factory", async function () {
-            const { uniswapV2Factory, uniswapV2Pair } = await loadFixture(deployUniswapPair);
+            const { uniswapV2Factory, uniswapV2Pair } = await loadFixture(deployContracts);
             expect(await uniswapV2Pair.factory()).to.be.equal( uniswapV2Factory.address )
         });
 
         it("has no reserves", async function () {
-            const { uniswapV2Factory, uniswapV2Pair } = await loadFixture(deployUniswapPair);
+            const { uniswapV2Factory, uniswapV2Pair } = await loadFixture(deployContracts);
             expect(await uniswapV2Pair.getReserves()).to.deep.equal( [0, 0, 0] )
         });
     })
 
+
     describe("Adding liquidity", function () {
 
         it("can add to the reserves", async function () {
-            const {  uniswapV2Router02, uniswapV2Pair, token1, token2, user0 } = await loadFixture(deployUniswapPair);
+            const {  uniswapV2Router02, uniswapV2Pair, token1, token2, user0 } = await loadFixture(deployContracts);
             const token1DepositAmount = toWei(100);
             const token2DepositAmount = toWei(10);
 
@@ -57,7 +57,7 @@ describe("Uniswap V2++", function () {
     describe("Removing liquidity", function () {
 
         it("can remove the liquidity provided", async function () {
-            const { uniswapV2Router02, uniswapV2Pair, token1, token2, user0 } = await loadFixture(deployUniswapPair);
+            const { uniswapV2Router02, uniswapV2Pair, token1, token2, user0 } = await loadFixture(deployContracts);
 
             const token1DepositAmount = toWei(100);
             const token2DepositAmount = toWei(10);
@@ -125,7 +125,7 @@ describe("Uniswap V2++", function () {
         let user0: SignerWithAddress;
 
         beforeEach(async function () {
-            const data = await loadFixture(deployUniswapPair);
+            const data = await loadFixture(deployContracts);
             owner = data.owner
             uniswapV2Router02 = data.uniswapV2Router02
             uniswapV2Pair = data.uniswapV2Pair
@@ -190,6 +190,75 @@ describe("Uniswap V2++", function () {
 
             expect(tokensSpent).to.equal(tokenInAmount) // 10 token1
             expect(tokensReceived).to.be.greaterThan(amountOutMin) // 0.9066108938801491 token2
+        });
+       
+    })
+
+
+    describe("Flash Loan", function () {
+        
+        let uniswapV2Router02: Contract;
+        let uniswapV2Pair: Contract;
+        let flashLoanClient: Contract;
+        let token1: Contract;
+        let token2: Contract;
+        let owner: SignerWithAddress;
+        let user0: SignerWithAddress;
+
+        beforeEach(async function () {
+            const data = await loadFixture(deployContracts);
+            owner = data.owner
+            uniswapV2Router02 = data.uniswapV2Router02
+            uniswapV2Pair = data.uniswapV2Pair
+            flashLoanClient = data.flashLoanClient
+            token1 = data.token1
+            token2 = data.token2
+            user0 = data.user0
+
+            const token1DepositAmount = toWei(100);
+            const token2DepositAmount = toWei(10);
+
+            await token1.connect(owner).approve(uniswapV2Router02.address, token1DepositAmount)
+            await token2.connect(owner).approve(uniswapV2Router02.address, token2DepositAmount)
+
+            const deadline = await getLastBlockTimestamp() + 100;
+
+            // when adding the initial liquidity it transfers the desired amount of LP tokens
+            await uniswapV2Router02.connect(owner).addLiquidity(
+                token1.address, // tokenA
+                token2.address, // tokenB
+                token1DepositAmount,  // amountADesired
+                token2DepositAmount,   // amountBDesired
+                toWei(10),  // amountAMin
+                toWei(1),   // amountBMin
+                user0.address, // to
+                deadline
+            )
+
+            return { uniswapV2Router02, uniswapV2Pair, token1, token2, user0 }
+            
+        })
+
+        it("can do a flash loan", async function () {
+   
+            const loanAmount = toWei(50);
+
+            // transfer some tokens to pay loan fees to flashLoanClient
+            await token1.connect(user0).transfer(flashLoanClient.address, toWei(1));
+
+            // verify max flash loan 
+            const maxLoan = await uniswapV2Pair.maxFlashLoan(token1.address);
+            expect(maxLoan).to.equal(toWei(100))
+
+            // verify max fees 
+            const fees = await uniswapV2Pair.flashFee(token1.address, loanAmount);
+            expect(fees).to.equal(toWei(0.15))
+
+            // perform flash loan
+            await flashLoanClient.connect(user0).flashLoan(token1.address, loanAmount)
+
+            // verify loan + fees was repaid 
+            expect(await token1.balanceOf(flashLoanClient.address)).to.equal(toWei(1 - 0.15))
         });
        
     })

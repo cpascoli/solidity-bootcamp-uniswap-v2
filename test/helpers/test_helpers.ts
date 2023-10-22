@@ -1,7 +1,6 @@
 import { ethers } from "hardhat";
 import { BigNumber, constants } from "ethers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 
 import PAIR_ABI from "../../artifacts/contracts/UniswapV2Pair.sol/UniswapV2Pair.json";
 
@@ -45,7 +44,7 @@ export const getLastBlockTimestamp = async () => {
 /**
  * @returns an object containing an instance of the MyNFT contract
  */
-export const deployUniswapPair = async () => {
+export const deployContracts = async () => {
 
     const [ owner, user0, user1, user2 ] = await ethers.getSigners();
 
@@ -65,9 +64,15 @@ export const deployUniswapPair = async () => {
     const pairAddress = await uniswapV2Factory.allPairs(0)
     const uniswapV2Pair = new ethers.Contract(pairAddress, PAIR_ABI.abi, owner);
 
+    // flashloan client
+    const FlashLoanClient = await ethers.getContractFactory("FlashLoanClient");
+    const flashLoanClient = await FlashLoanClient.deploy(uniswapV2Pair.address);
+
+
+
     // transfer some tokens to user0
     await token1.connect(owner).transfer(user0.address, toWei(100))
     await token2.connect(owner).transfer(user0.address, toWei(100))
 
-    return { uniswapV2Factory, uniswapV2Router02, uniswapV2Pair, token1, token2, owner, user0, user1, user2 };
+    return { uniswapV2Factory, uniswapV2Router02, uniswapV2Pair, flashLoanClient, token1, token2, owner, user0, user1, user2 };
 }
