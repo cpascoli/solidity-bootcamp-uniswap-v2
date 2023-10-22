@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 // import { IUniswapV2ERC20 } from "./interfaces/IUniswapV2ERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IUniswapV2ERC20 } from "./interfaces/IUniswapV2ERC20.sol";
+import { IUniswapV2ERC20 } from "./interfaces/uniswap/IUniswapV2ERC20.sol";
 
 contract UniswapV2ERC20 is ERC20, IUniswapV2ERC20 {
 

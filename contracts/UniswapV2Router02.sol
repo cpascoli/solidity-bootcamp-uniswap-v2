@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IUniswapV2Factory } from "./interfaces/IUniswapV2Factory.sol";
-import { IUniswapV2Pair } from "./interfaces/IUniswapV2Pair.sol";
-import { IUniswapV2Router02 } from "./interfaces/IUniswapV2Router02.sol";
+
+import { IUniswapV2Factory } from "./interfaces/uniswap/IUniswapV2Factory.sol";
+import { IUniswapV2Pair } from "./interfaces/uniswap/IUniswapV2Pair.sol";
+import { IUniswapV2Router02 } from "./interfaces/uniswap/IUniswapV2Router02.sol";
+import { IWETH } from "./interfaces/uniswap/IWETH.sol";
+
 import { UniswapV2Library } from "./libraries/UniswapV2Library.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IWETH } from "./interfaces/IWETH.sol";
 
 
 contract UniswapV2Router02 is IUniswapV2Router02 {
