@@ -13,8 +13,6 @@ import { IERC3156FlashBorrower } from "./interfaces/flashloan/IERC3156FlashBorro
 import { UQ112x112 } from "./libraries/UQ112x112.sol";
 import { UniswapV2ERC20 } from "./UniswapV2ERC20.sol";
 
-import "hardhat/console.sol";
-
 
 contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
 
