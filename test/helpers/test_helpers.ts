@@ -65,7 +65,6 @@ export const deployContracts = async () => {
     const flashLoanClient = await FlashLoanClient.deploy(uniswapV2Pair.address);
 
 
-
     // transfer some tokens to user0
     await token1.connect(owner).transfer(user0.address, toWei(100))
     await token2.connect(owner).transfer(user0.address, toWei(100))

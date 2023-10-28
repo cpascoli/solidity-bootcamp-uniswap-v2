@@ -234,11 +234,9 @@ describe("Uniswap V2++", function () {
             )
 
             return { uniswapV2Pair, token1, token2, user0 }
-            
         })
 
         it("can do a flash loan", async function () {
-   
             const loanAmount = toWei(50);
 
             // transfer some tokens to pay loan fees to flashLoanClient
@@ -250,14 +248,14 @@ describe("Uniswap V2++", function () {
 
             // verify max fees 
             const fees = await uniswapV2Pair.flashFee(token1.address, loanAmount);
-            expect(fees).to.equal(toWei(0.15))
+            expect(fees).to.equal(toWei(0.15)) // fees: 0.3% of 50 units is 0.15 units
 
             // perform flash loan
             await flashLoanClient.connect(user0).flashLoan(token1.address, loanAmount)
 
             // verify loan + fees was repaid 
             expect(await token1.balanceOf(flashLoanClient.address)).to.equal(toWei(1 - 0.15))
-        });
+        })
        
     })
 

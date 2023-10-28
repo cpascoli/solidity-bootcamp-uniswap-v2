@@ -13,6 +13,8 @@ import { IERC3156FlashBorrower } from "./interfaces/flashloan/IERC3156FlashBorro
 import { UQ112x112 } from "./libraries/UQ112x112.sol";
 import { UniswapV2ERC20 } from "./UniswapV2ERC20.sol";
 
+import "hardhat/console.sol";
+
 
 contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
 
@@ -92,7 +94,8 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         token1 = _token1;
     }
 
-    ///// SWAPS /////
+    // **** SWAPS ****
+
     function swapExactTokensForTokens(
         uint amountIn,
         uint amountOutMin,
@@ -306,7 +309,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
 
   
     function _swap(uint amountOut, address input, address output, address to) private {
-       
+
         (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOut) : (amountOut, uint(0));
         
         require(amount0Out > 0 || amount1Out > 0, 'UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT');
@@ -319,9 +322,12 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         { // scope for _token{0,1}, avoids stack too deep errors
         address _token0 = token0;
         address _token1 = token1;
-        require(to != _token0 && to != _token1, 'UniswapV2: INVALID_TO');
+
         if (amount0Out > 0) SafeERC20.safeTransfer(IERC20(_token0), to, amount0Out); // optimistically transfer tokens
         if (amount1Out > 0) SafeERC20.safeTransfer(IERC20(_token1), to, amount1Out); // optimistically transfer tokens
+        
+        //  if (data.length > 0) IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0Out, amount1Out, data) 
+        
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
         }
@@ -331,8 +337,8 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         require(amount0In > 0 || amount1In > 0, 'UniswapV2: INSUFFICIENT_INPUT_AMOUNT');
 
         { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
-        uint balance0Adjusted = (balance0 * 1000) - (amount0In * 3);
-        uint balance1Adjusted = (balance1 * 1000) - (amount1In * 3);
+        uint balance0Adjusted = (balance0 * 1000) - (amount0In * 3); // 0.3% fee
+        uint balance1Adjusted = (balance1 * 1000) - (amount1In * 3); // 0.3% fee
         require(balance0Adjusted * balance1Adjusted >= uint(_reserve0) * _reserve1 * 1000**2, 'UniswapV2: K');
         }
 
@@ -381,6 +387,8 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         uint256 fee = _flashFee(token, amount);
         require (amount <= _maxFlashLoan(token), "Not enough reserves");
 
+        // (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
+    
         // token is token0 or token1
         IERC20 loanToken = token == token0 ? IERC20(token0) : IERC20(token1);
 
@@ -394,7 +402,22 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         );
 
         // get the loan + fee back
-        SafeERC20.safeTransferFrom(loanToken, address(receiver), address(this),  amount + fee);
+        SafeERC20.safeTransferFrom(loanToken, address(receiver), address(this), amount + fee);
+
+        // update reserves
+        uint balance0 = IERC20(token0).balanceOf(address(this));
+        uint balance1 = IERC20(token1).balanceOf(address(this));
+
+        //// verify reserve product invariant ////
+        // (uint amount0Out, uint amount1Out) = token == token1 ? (uint(0), amount) : (amount, uint(0));
+        // uint amount0In = balance0 > reserve0 - amount0Out ? balance0 - (reserve0 - amount0Out) : 0;
+        // uint amount1In = balance1 > reserve1 - amount1Out ? balance1 - (reserve1 - amount1Out) : 0;
+        // require(amount0In > 0 || amount1In > 0, 'UniswapV2: INSUFFICIENT_INPUT_AMOUNT');
+        // uint balance0Adjusted = (balance0 * 1000) - (amount0Out * 3); // balance0 - 0.3% fee on loan
+        // uint balance1Adjusted = (balance1 * 1000) - (amount1Out * 3); // balance1 - 0.3% fee on loan
+        // require(balance0Adjusted * balance1Adjusted >= uint(reserve0) * reserve1 * 1000**2, 'UniswapV2: K flashLoan');
+
+        _update(balance0, balance1, reserve0, reserve1);
 
         return true;
     }
