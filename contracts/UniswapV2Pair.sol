@@ -2,8 +2,9 @@
 pragma solidity 0.8.19;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IUniswapV2Pair } from "./interfaces/uniswap/IUniswapV2Pair.sol";
 import { IUniswapV2Factory } from "./interfaces/uniswap/IUniswapV2Factory.sol";
@@ -14,7 +15,7 @@ import { UQ112x112 } from "./libraries/UQ112x112.sol";
 import { UniswapV2ERC20 } from "./UniswapV2ERC20.sol";
 
 
-contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
+contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender, ReentrancyGuard {
 
     uint public constant MINIMUM_LIQUIDITY = 10**3;
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
@@ -32,14 +33,6 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
     uint public price0CumulativeLast;
     uint public price1CumulativeLast;
     uint public kLast; // reserve0 * reserve1, as of immediately after the most recent liquidity event
-
-    uint private unlocked = 1;
-    modifier lock() {
-        require(unlocked == 1, 'UniswapV2: LOCKED');
-        unlocked = 0;
-        _;
-        unlocked = 1;
-    }
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
@@ -101,7 +94,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         address output,
         address to,
         uint deadline
-    ) external ensure(deadline) returns (uint amountOut) {
+    ) external ensure(deadline) nonReentrant returns (uint amountOut) {
         amountOut = getAmountOut(amountIn, input, output);
         require(amountOut >= amountOutMin, 'UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT');
         SafeERC20.safeTransferFrom(
@@ -117,7 +110,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         address output,
         address to,
         uint deadline
-    ) external ensure(deadline) returns (uint amountIn) {
+    ) external ensure(deadline) nonReentrant returns (uint amountIn) {
         amountIn = getAmountIn(amountOut, input, output);
         require(amountIn <= amountInMax, 'UniswapV2: EXCESSIVE_INPUT_AMOUNT');
         SafeERC20.safeTransferFrom(
@@ -138,7 +131,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         uint amountBMin,
         address to,
         uint deadline
-    ) external ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
+    ) external ensure(deadline) nonReentrant returns (uint amountA, uint amountB, uint liquidity) {
        
         (uint reserveA, uint reserveB) = getReservesSorted(tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
@@ -171,7 +164,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         uint amountBMin,
         address to,
         uint deadline
-    ) public ensure(deadline) returns (uint amountA, uint amountB) {
+    ) external ensure(deadline) nonReentrant returns (uint amountA, uint amountB) {
 
         SafeERC20.safeTransferFrom(
             IERC20(address(this)), msg.sender, address(this), liquidity
@@ -186,11 +179,8 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
     }
 
 
-
-    // **** PRIVATE FUNCTIONS ****
-
     // force balances to match reserves
-    function skim(address to) external lock {
+    function skim(address to) external nonReentrant {
         address _token0 = token0; // gas savings
         address _token1 = token1; // gas savings
         SafeERC20.safeTransfer(IERC20(_token0), to, IERC20(_token0).balanceOf(address(this)) - reserve0);
@@ -198,10 +188,12 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
     }
 
     // force reserves to match balances
-    function sync() external lock {
+    function sync() external nonReentrant() {
         _update(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)), reserve0, reserve1);
     }
 
+
+    // **** PRIVATE FUNCTIONS ****
 
     // update reserves and, on the first call per block, price accumulators
     function _update(uint balance0, uint balance1, uint112 _reserve0, uint112 _reserve1) private {
@@ -241,7 +233,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
         }
     }
 
-    function _mintShares(address to) private lock returns (uint liquidity) {
+    function _mintShares(address to) private returns (uint liquidity) {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
@@ -271,7 +263,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
     }
 
 
-    function _burnShares(address to) private lock returns (uint amount0, uint amount1) {
+    function _burnShares(address to) private returns (uint amount0, uint amount1) {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         address _token0 = token0;                                // gas savings
         address _token1 = token1;                                // gas savings
@@ -323,8 +315,6 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender {
 
         if (amount0Out > 0) SafeERC20.safeTransfer(IERC20(_token0), to, amount0Out); // optimistically transfer tokens
         if (amount1Out > 0) SafeERC20.safeTransfer(IERC20(_token1), to, amount1Out); // optimistically transfer tokens
-        
-        //  if (data.length > 0) IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0Out, amount1Out, data) 
         
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
