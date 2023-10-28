@@ -52,10 +52,6 @@ export const deployContracts = async () => {
     const UniswapV2Factory = await ethers.getContractFactory("UniswapV2Factory");
     const uniswapV2Factory = await UniswapV2Factory.deploy(owner.address); // owner is the receiver of the fees
 
-    // router
-    const UniswapV2Router02 = await ethers.getContractFactory("UniswapV2Router02");
-    const uniswapV2Router02 = await UniswapV2Router02.deploy(uniswapV2Factory.address, constants.AddressZero);
-
     // token pair
     const Token20 = await ethers.getContractFactory("Token20");
     const token1 = await Token20.deploy(toWei(1_000_000), "Token A", "A");
@@ -74,5 +70,5 @@ export const deployContracts = async () => {
     await token1.connect(owner).transfer(user0.address, toWei(100))
     await token2.connect(owner).transfer(user0.address, toWei(100))
 
-    return { uniswapV2Factory, uniswapV2Router02, uniswapV2Pair, flashLoanClient, token1, token2, owner, user0, user1, user2 };
+    return { uniswapV2Factory, uniswapV2Pair, flashLoanClient, token1, token2, owner, user0, user1, user2 };
 }
