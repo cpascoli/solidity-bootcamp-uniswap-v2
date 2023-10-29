@@ -7,14 +7,14 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IUniswapV2Pair } from "./interfaces/uniswap/IUniswapV2Pair.sol";
-import { IUniswapV2Factory } from "./interfaces/uniswap/IUniswapV2Factory.sol";
+import { ISwapPoolPair } from "./interfaces/uniswap/ISwapPoolPair.sol";
+import { ISwapPoolFactory } from "./interfaces/uniswap/ISwapPoolFactory.sol";
 import { IERC3156FlashLender } from "./interfaces/flashloan/IERC3156FlashLender.sol";
 import { IERC3156FlashBorrower } from "./interfaces/flashloan/IERC3156FlashBorrower.sol";
-import { UniswapV2ERC20 } from "./UniswapV2ERC20.sol";
+import { SwapPoolERC20 } from "./SwapPoolERC20.sol";
 
 
-contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender, ReentrancyGuard {
+contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, ReentrancyGuard {
 
     using PRBMathUD60x18 for uint256;
 
@@ -40,23 +40,23 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender, R
         _;
     }
 
-    constructor() UniswapV2ERC20() {
+    constructor() SwapPoolERC20() {
         factory = msg.sender;
     }
 
-    function decimals() public view override(UniswapV2ERC20, IUniswapV2Pair) returns (uint8) {
+    function decimals() public view override(SwapPoolERC20, ISwapPoolPair) returns (uint8) {
         return super.decimals();
     }
 
-    function DOMAIN_SEPARATOR() public view override(UniswapV2ERC20, IUniswapV2Pair) returns (bytes32) {
+    function DOMAIN_SEPARATOR() public view override(SwapPoolERC20, ISwapPoolPair) returns (bytes32) {
         return super.DOMAIN_SEPARATOR();
     }
 
-    function PERMIT_TYPEHASH() public pure override(UniswapV2ERC20, IUniswapV2Pair) returns (bytes32) {
+    function PERMIT_TYPEHASH() public pure override(SwapPoolERC20, ISwapPoolPair) returns (bytes32) {
         return super.PERMIT_TYPEHASH();
     }
 
-    function nonces(address owner) public view override(UniswapV2ERC20, IUniswapV2Pair) returns (uint) {
+    function nonces(address owner) public view override(SwapPoolERC20, ISwapPoolPair) returns (uint) {
         return super.nonces(owner);
     }
 
@@ -68,7 +68,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender, R
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public override(UniswapV2ERC20, IUniswapV2Pair) {
+    ) public override(SwapPoolERC20, ISwapPoolPair) {
 
         return super.permit(owner, spender, value, deadline, v, r, s);
     }
@@ -217,7 +217,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20, IERC3156FlashLender, R
 
     // if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
     function _mintFee(uint _reserve0, uint _reserve1) private returns (bool feeOn) {
-        address feeTo = IUniswapV2Factory(factory).feeTo();
+        address feeTo = ISwapPoolFactory(factory).feeTo();
         feeOn = feeTo != address(0);
         uint _kLast = kLast; // gas savings
         if (feeOn) {

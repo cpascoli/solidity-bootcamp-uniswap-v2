@@ -3,25 +3,9 @@ pragma solidity 0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IUniswapV2Pair is IERC20 {
-    function DOMAIN_SEPARATOR() external view returns (bytes32);
+interface ISwapPoolPair is IERC20 {
 
-    function PERMIT_TYPEHASH() external pure returns (bytes32);
-
-    function decimals() external view returns (uint8);
-
-    function nonces(address owner) external view returns (uint);
-
-    function permit(
-        address owner,
-        address spender,
-        uint value,
-        uint deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
-
+    event Sync(uint reserve0, uint reserve1);
     event Mint(address indexed sender, uint amount0, uint amount1);
     event Burn(
         address indexed sender,
@@ -37,7 +21,32 @@ interface IUniswapV2Pair is IERC20 {
         uint amount1Out,
         address indexed to
     );
-    event Sync(uint reserve0, uint reserve1);
+   
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+    function PERMIT_TYPEHASH() external pure returns (bytes32);
+    function decimals() external view returns (uint8);
+    function nonces(address owner) external view returns (uint);
+    function MINIMUM_LIQUIDITY() external pure returns (uint);
+    function factory() external view returns (address);
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+    function getReserves() external view returns (uint reserve0, uint reserve1, uint32 blockTimestampLast);
+    function price0CumulativeLast() external view returns (uint);
+    function price1CumulativeLast() external view returns (uint);
+    function kLast() external view returns (uint);
+    function skim(address to) external;
+    function sync() external;
+    function initialize(address, address) external;
+
+    function permit(
+        address owner,
+        address spender,
+        uint value,
+        uint deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
 
     function swapExactTokensForTokens(
         uint amountIn,
@@ -77,26 +86,4 @@ interface IUniswapV2Pair is IERC20 {
         address to,
         uint deadline
     ) external returns (uint amountA, uint amountB);
-
-    function MINIMUM_LIQUIDITY() external pure returns (uint);
-
-    function factory() external view returns (address);
-
-    function token0() external view returns (address);
-
-    function token1() external view returns (address);
-
-    function getReserves() external view returns (uint reserve0, uint reserve1, uint32 blockTimestampLast);
-
-    function price0CumulativeLast() external view returns (uint);
-
-    function price1CumulativeLast() external view returns (uint);
-
-    function kLast() external view returns (uint);
-
-    function skim(address to) external;
-
-    function sync() external;
-
-    function initialize(address, address) external;
 }

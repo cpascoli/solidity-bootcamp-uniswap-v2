@@ -9,12 +9,12 @@ describe("Uniswap V2++", function () {
 
     describe("Pair Contract", function () {
         it("has the expected factory", async function () {
-            const { uniswapV2Factory, uniswapV2Pair } = await loadFixture(deployContracts);
-            expect(await uniswapV2Pair.factory()).to.be.equal( uniswapV2Factory.address )
+            const { swapPoolFactory, uniswapV2Pair } = await loadFixture(deployContracts);
+            expect(await uniswapV2Pair.factory()).to.be.equal( swapPoolFactory.address )
         });
 
         it("has no reserves", async function () {
-            const { uniswapV2Factory, uniswapV2Pair } = await loadFixture(deployContracts);
+            const { swapPoolFactory, uniswapV2Pair } = await loadFixture(deployContracts);
             expect(await uniswapV2Pair.getReserves()).to.deep.equal( [0, 0, 0] )
         });
     })

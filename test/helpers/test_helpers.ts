@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { BigNumber, constants } from "ethers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 
-import PAIR_ABI from "../../artifacts/contracts/UniswapV2Pair.sol/UniswapV2Pair.json";
+import PAIR_ABI from "../../artifacts/contracts/SwapPool.sol/SwapPool.json";
 
 export type Bid = { price: number, timestamp: number }
 export const day = 24 * 60 * 60;
@@ -49,15 +49,15 @@ export const deployContracts = async () => {
     const [ owner, user0, user1, user2 ] = await ethers.getSigners();
 
     // factory
-    const UniswapV2Factory = await ethers.getContractFactory("UniswapV2Factory");
-    const uniswapV2Factory = await UniswapV2Factory.deploy(owner.address); // owner is the receiver of the fees
+    const SwapPoolFactory = await ethers.getContractFactory("SwapPoolFactory");
+    const swapPoolFactory = await SwapPoolFactory.deploy(owner.address); // owner is the receiver of the fees
 
     // token pair
     const Token20 = await ethers.getContractFactory("Token20");
     const token1 = await Token20.deploy(toWei(1_000_000), "Token A", "A");
     const token2 = await Token20.deploy(toWei(200_000), "Token B", "B");
-    await uniswapV2Factory.createPair(token1.address, token2.address)
-    const pairAddress = await uniswapV2Factory.allPairs(0)
+    await swapPoolFactory.createPair(token1.address, token2.address)
+    const pairAddress = await swapPoolFactory.allPairs(0)
     const uniswapV2Pair = new ethers.Contract(pairAddress, PAIR_ABI.abi, owner);
 
     // flashloan client
@@ -69,5 +69,5 @@ export const deployContracts = async () => {
     await token1.connect(owner).transfer(user0.address, toWei(100))
     await token2.connect(owner).transfer(user0.address, toWei(100))
 
-    return { uniswapV2Factory, uniswapV2Pair, flashLoanClient, token1, token2, owner, user0, user1, user2 };
+    return { swapPoolFactory, uniswapV2Pair, flashLoanClient, token1, token2, owner, user0, user1, user2 };
 }
