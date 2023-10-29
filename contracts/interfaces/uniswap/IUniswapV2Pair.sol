@@ -37,7 +37,7 @@ interface IUniswapV2Pair is IERC20 {
         uint amount1Out,
         address indexed to
     );
-    event Sync(uint112 reserve0, uint112 reserve1);
+    event Sync(uint reserve0, uint reserve1);
 
     function swapExactTokensForTokens(
         uint amountIn,
@@ -86,10 +86,7 @@ interface IUniswapV2Pair is IERC20 {
 
     function token1() external view returns (address);
 
-    function getReserves()
-        external
-        view
-        returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+    function getReserves() external view returns (uint reserve0, uint reserve1, uint32 blockTimestampLast);
 
     function price0CumulativeLast() external view returns (uint);
 

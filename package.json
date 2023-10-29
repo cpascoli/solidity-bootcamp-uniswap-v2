@@ -33,6 +33,7 @@
     "@openzeppelin/test-helpers": "^0.5.16",
     "dotenv": "^16.3.1",
     "hardhat": "^2.12.6",
-    "hardhat-erc1820": "^0.1.0"
+    "hardhat-erc1820": "^0.1.0",
+    "prb-math": "^2.4.3"
   }
 }
