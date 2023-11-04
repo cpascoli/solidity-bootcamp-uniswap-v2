@@ -8,17 +8,17 @@ describe("Liquidity", function () {
     describe("Adding liquidity", function () {
 
         it("add tokens to the reserves", async function () {
-            const { uniswapV2Pair, token1, token2, user0 } = await loadFixture(deployContracts);
+            const { swapPair, token1, token2, user0 } = await loadFixture(deployContracts);
             const token1DepositAmount = toWei(100);
             const token2DepositAmount = toWei(10);
 
-            await token1.connect(user0).approve(uniswapV2Pair.address, token1DepositAmount)
-            await token2.connect(user0).approve(uniswapV2Pair.address, token2DepositAmount)
+            await token1.connect(user0).approve(swapPair.address, token1DepositAmount)
+            await token2.connect(user0).approve(swapPair.address, token2DepositAmount)
 
             const deadline = await getLastBlockTimestamp() + 100;
 
             // add liquidity
-            await uniswapV2Pair.connect(user0).addLiquidity(
+            await swapPair.connect(user0).addLiquidity(
                 token1.address, // tokenA
                 token2.address, // tokenB
                 token1DepositAmount,  // amountADesired
@@ -30,23 +30,23 @@ describe("Liquidity", function () {
             )
             
             // verify reserves have been added
-            const [reserve0, reserve1, _] = await uniswapV2Pair.getReserves();
+            const [reserve0, reserve1, _] = await swapPair.getReserves();
             expect(reserve0).to.equal(token1DepositAmount)
             expect(reserve1).to.equal(token2DepositAmount)
         });
 
         it("returns LP tokens to the user", async function () {
-            const { uniswapV2Pair, token1, token2, user0 } = await loadFixture(deployContracts);
+            const { swapPair, token1, token2, user0 } = await loadFixture(deployContracts);
             const token1DepositAmount = toWei(100);
             const token2DepositAmount = toWei(10);
 
-            await token1.connect(user0).approve(uniswapV2Pair.address, token1DepositAmount)
-            await token2.connect(user0).approve(uniswapV2Pair.address, token2DepositAmount)
+            await token1.connect(user0).approve(swapPair.address, token1DepositAmount)
+            await token2.connect(user0).approve(swapPair.address, token2DepositAmount)
 
             const deadline = await getLastBlockTimestamp() + 100;
 
             // add liquidity
-            await uniswapV2Pair.connect(user0).addLiquidity(
+            await swapPair.connect(user0).addLiquidity(
                 token1.address, // tokenA
                 token2.address, // tokenB
                 token1DepositAmount,  // amountADesired
@@ -58,25 +58,25 @@ describe("Liquidity", function () {
             )
             
             // verify user0 received the desired amount of LP tokens
-            expect(await uniswapV2Pair.balanceOf(user0.address)).to.be.greaterThan( 0 )
+            expect(await swapPair.balanceOf(user0.address)).to.be.greaterThan( 0 )
         });
     })
 
     describe("Removing liquidity", function () {
 
         it("can remove the liquidity provided", async function () {
-            const { uniswapV2Pair, token1, token2, user0 } = await loadFixture(deployContracts);
+            const { swapPair, token1, token2, user0 } = await loadFixture(deployContracts);
 
             const token1DepositAmount = toWei(100);
             const token2DepositAmount = toWei(10);
 
-            await token1.connect(user0).approve(uniswapV2Pair.address, token1DepositAmount)
-            await token2.connect(user0).approve(uniswapV2Pair.address, token2DepositAmount)
+            await token1.connect(user0).approve(swapPair.address, token1DepositAmount)
+            await token2.connect(user0).approve(swapPair.address, token2DepositAmount)
 
             const deadline1 = await getLastBlockTimestamp() + 100;
 
             // when adding the initial liquidity it transfers the desired amount of LP tokens
-            await uniswapV2Pair.connect(user0).addLiquidity(
+            await swapPair.connect(user0).addLiquidity(
                 token1.address, // tokenA
                 token2.address, // tokenB
                 token1DepositAmount,  // amountADesired
@@ -88,13 +88,13 @@ describe("Liquidity", function () {
             );
             
             // approve LP token transfer
-            const lpBalance = await uniswapV2Pair.balanceOf(user0.address);
+            const lpBalance = await swapPair.balanceOf(user0.address);
 
-            await uniswapV2Pair.connect(user0).approve(uniswapV2Pair.address, lpBalance);
+            await swapPair.connect(user0).approve(swapPair.address, lpBalance);
 
             // remove liquidity
             const deadline2 = await getLastBlockTimestamp() + 100;
-            await uniswapV2Pair.connect(user0).removeLiquidity(
+            await swapPair.connect(user0).removeLiquidity(
                 token1.address, // tokenA
                 token2.address, // tokenB
                 lpBalance,  // liquidity
@@ -105,24 +105,24 @@ describe("Liquidity", function () {
             )
     
             // verify (almost) all liquidity has been withdrawn
-            const [reserve0, reserve1, _] = await uniswapV2Pair.getReserves();
+            const [reserve0, reserve1, _] = await swapPair.getReserves();
             expect(reserve0).to.be.lessThan( toWei(0.00001) ); // 3163 wei
             expect(reserve1).to.lessThan( toWei(0.00001) ); // 317 wei
         });
 
         it("burns LP tokens", async function () {
-            const { uniswapV2Pair, token1, token2, user0 } = await loadFixture(deployContracts);
+            const { swapPair, token1, token2, user0 } = await loadFixture(deployContracts);
 
             const token1DepositAmount = toWei(100);
             const token2DepositAmount = toWei(10);
 
-            await token1.connect(user0).approve(uniswapV2Pair.address, token1DepositAmount)
-            await token2.connect(user0).approve(uniswapV2Pair.address, token2DepositAmount)
+            await token1.connect(user0).approve(swapPair.address, token1DepositAmount)
+            await token2.connect(user0).approve(swapPair.address, token2DepositAmount)
 
             const deadline1 = await getLastBlockTimestamp() + 100;
 
             // when adding the initial liquidity it transfers the desired amount of LP tokens
-            await uniswapV2Pair.connect(user0).addLiquidity(
+            await swapPair.connect(user0).addLiquidity(
                 token1.address, // tokenA
                 token2.address, // tokenB
                 token1DepositAmount,  // amountADesired
@@ -134,16 +134,16 @@ describe("Liquidity", function () {
             );
             
             // approve LP token transfer
-            const lpBalance = await uniswapV2Pair.balanceOf(user0.address);
+            const lpBalance = await swapPair.balanceOf(user0.address);
 
-            await uniswapV2Pair.connect(user0).approve(uniswapV2Pair.address, lpBalance);
+            await swapPair.connect(user0).approve(swapPair.address, lpBalance);
 
             // remove liquidity
             const balance1Before = await token1.balanceOf(user0.address);
             const balance2Before = await token2.balanceOf(user0.address);
 
             const deadline2 = await getLastBlockTimestamp() + 100;
-            await uniswapV2Pair.connect(user0).removeLiquidity(
+            await swapPair.connect(user0).removeLiquidity(
                 token1.address, // tokenA
                 token2.address, // tokenB
                 lpBalance,  // liquidity

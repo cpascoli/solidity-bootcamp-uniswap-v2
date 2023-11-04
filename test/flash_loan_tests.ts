@@ -7,7 +7,7 @@ import { Contract } from "ethers";
 
 describe("Flash Loan", function () {
     
-    let uniswapV2Pair: Contract;
+    let swapPair: Contract;
     let flashLoanClient: Contract;
     let token1: Contract;
     let token2: Contract;
@@ -17,7 +17,7 @@ describe("Flash Loan", function () {
     beforeEach(async function () {
         const data = await loadFixture(deployContracts);
         owner = data.owner
-        uniswapV2Pair = data.uniswapV2Pair
+        swapPair = data.swapPair
         flashLoanClient = data.flashLoanClient
         token1 = data.token1
         token2 = data.token2
@@ -26,13 +26,13 @@ describe("Flash Loan", function () {
         const token1DepositAmount = toWei(100);
         const token2DepositAmount = toWei(10);
 
-        await token1.connect(owner).approve(uniswapV2Pair.address, token1DepositAmount)
-        await token2.connect(owner).approve(uniswapV2Pair.address, token2DepositAmount)
+        await token1.connect(owner).approve(swapPair.address, token1DepositAmount)
+        await token2.connect(owner).approve(swapPair.address, token2DepositAmount)
 
         const deadline = await getLastBlockTimestamp() + 100;
 
         // when adding the initial liquidity it transfers the desired amount of LP tokens
-        await uniswapV2Pair.connect(owner).addLiquidity(
+        await swapPair.connect(owner).addLiquidity(
             token1.address, // tokenA
             token2.address, // tokenB
             token1DepositAmount,  // amountADesired
@@ -43,18 +43,18 @@ describe("Flash Loan", function () {
             deadline
         )
 
-        return { uniswapV2Pair, token1, token2, user0 }
+        return { swapPair, token1, token2, user0 }
     })
 
     it("can take a flash loan on token 0", async function () {
         const loanAmount = toWei(50);
 
         // verify max flash loan 
-        const maxLoan = await uniswapV2Pair.maxFlashLoan(token1.address);
+        const maxLoan = await swapPair.maxFlashLoan(token1.address);
         expect(maxLoan).to.equal(toWei(100))
 
         // verify max fees 
-        const fees = await uniswapV2Pair.flashFee(token1.address, loanAmount);
+        const fees = await swapPair.flashFee(token1.address, loanAmount);
         expect(fees).to.equal(toWei(0.15)) // fees: 0.3% of 50 units is 0.15 units
 
         // transfer some tokens to pay loan fees to flashLoanClient
@@ -71,11 +71,11 @@ describe("Flash Loan", function () {
         const loanAmount = toWei(5);
 
         // verify max flash loan 
-        const maxLoan = await uniswapV2Pair.maxFlashLoan(token2.address);
+        const maxLoan = await swapPair.maxFlashLoan(token2.address);
         expect(maxLoan).to.equal(toWei(10))
 
         // verify max fees 
-        const fees = await uniswapV2Pair.flashFee(token2.address, loanAmount);
+        const fees = await swapPair.flashFee(token2.address, loanAmount);
         expect(fees).to.equal(toWei(0.015)) // fees: 0.3% of 5 is 0.015
 
         // transfer some tokens to pay loan fees to flashLoanClient

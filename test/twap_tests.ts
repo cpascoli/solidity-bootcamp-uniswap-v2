@@ -7,7 +7,7 @@ import { Contract } from "ethers";
 
 describe("TWAP", function () {
     
-    let uniswapV2Pair: Contract;
+    let swapPair: Contract;
     let token1: Contract;
     let token2: Contract;
     let owner: SignerWithAddress;
@@ -16,7 +16,7 @@ describe("TWAP", function () {
     beforeEach(async function () {
         const data = await loadFixture(deployContracts);
         owner = data.owner
-        uniswapV2Pair = data.uniswapV2Pair
+        swapPair = data.swapPair
         token1 = data.token1
         token2 = data.token2
         user0 = data.user0
@@ -24,13 +24,13 @@ describe("TWAP", function () {
         const token1DepositAmount = toWei(100);
         const token2DepositAmount = toWei(20);
 
-        await token1.connect(owner).approve(uniswapV2Pair.address, token1DepositAmount)
-        await token2.connect(owner).approve(uniswapV2Pair.address, token2DepositAmount)
+        await token1.connect(owner).approve(swapPair.address, token1DepositAmount)
+        await token2.connect(owner).approve(swapPair.address, token2DepositAmount)
 
         const deadline = await getLastBlockTimestamp() + 100;
 
         // when adding the initial liquidity it transfers the desired amount of LP tokens
-        await uniswapV2Pair.connect(owner).addLiquidity(
+        await swapPair.connect(owner).addLiquidity(
             token1.address, // tokenA
             token2.address, // tokenB
             token1DepositAmount,  // amountADesired
@@ -41,22 +41,22 @@ describe("TWAP", function () {
             deadline
         )
 
-        return { uniswapV2Pair, token1, token2, user0 }
+        return { swapPair, token1, token2, user0 }
     })
 
     it("ptovides the cumulative price for token 0 and token 1", async function () {
 
-        const [, , blockTimestamp_0] = await uniswapV2Pair.getReserves()
-        const price0_0 = await uniswapV2Pair.price0CumulativeLast()
-        const price1_0 = await uniswapV2Pair.price1CumulativeLast()
+        const [, , blockTimestamp_0] = await swapPair.getReserves()
+        const price0_0 = await swapPair.price0CumulativeLast()
+        const price1_0 = await swapPair.price1CumulativeLast()
 
         // wait 1 hours and synch prices
         await waitSeconds(60 * 60)
-        await uniswapV2Pair.sync()
+        await swapPair.sync()
 
-        const [, , blockTimestamp_1] = await uniswapV2Pair.getReserves()
-        const price0_1 = await uniswapV2Pair.price0CumulativeLast()
-        const price1_1 = await uniswapV2Pair.price1CumulativeLast()
+        const [, , blockTimestamp_1] = await swapPair.getReserves()
+        const price0_1 = await swapPair.price0CumulativeLast()
+        const price1_1 = await swapPair.price1CumulativeLast()
 
         expect( price0_1 ).to.be.greaterThan(price0_0)
         expect( price1_1 ).to.be.greaterThan(price1_0)
@@ -68,11 +68,11 @@ describe("TWAP", function () {
         // wait 2 hours and synch prices
         const interval = 2 * 60 * 60;
         await waitSeconds(interval)
-        await uniswapV2Pair.sync()
+        await swapPair.sync()
 
-        const [, , blockTimestamp_2] = await uniswapV2Pair.getReserves()
-        const price0_2 = await uniswapV2Pair.price0CumulativeLast()
-        const price1_2 = await uniswapV2Pair.price1CumulativeLast()
+        const [, , blockTimestamp_2] = await swapPair.getReserves()
+        const price0_2 = await swapPair.price0CumulativeLast()
+        const price1_2 = await swapPair.price1CumulativeLast()
 
         expect( price0_2 ).to.be.greaterThan(price0_1)
         expect( price1_2 ).to.be.greaterThan(price1_1)
@@ -86,17 +86,17 @@ describe("TWAP", function () {
 
     it("updates the cumulative price for token 0 and token 1", async function () {
 
-        const [, , blockTimestamp_0] = await uniswapV2Pair.getReserves()
-        const price0_0 = await uniswapV2Pair.price0CumulativeLast()
-        const price1_0 = await uniswapV2Pair.price1CumulativeLast()
+        const [, , blockTimestamp_0] = await swapPair.getReserves()
+        const price0_0 = await swapPair.price0CumulativeLast()
+        const price1_0 = await swapPair.price1CumulativeLast()
 
         // wait 1 hours and synch prices
         await waitSeconds(60 * 60)
-        await uniswapV2Pair.sync()
+        await swapPair.sync()
 
-        const [, , blockTimestamp_1] = await uniswapV2Pair.getReserves()
-        const price0_1 = await uniswapV2Pair.price0CumulativeLast()
-        const price1_1 = await uniswapV2Pair.price1CumulativeLast()
+        const [, , blockTimestamp_1] = await swapPair.getReserves()
+        const price0_1 = await swapPair.price0CumulativeLast()
+        const price1_1 = await swapPair.price1CumulativeLast()
 
         expect( price0_1 ).to.be.greaterThan(price0_0)
         expect( price1_1 ).to.be.greaterThan(price1_0)
@@ -106,16 +106,16 @@ describe("TWAP", function () {
         expect( toUnits( price1_1.sub(price1_0).div(interval_0)) ).to.equal( 5 )
 
         // make a swap
-        await makeSwap(toWei(10), toWei(0.9), token1, token2, uniswapV2Pair, user0)
+        await makeSwap(toWei(10), toWei(0.9), token1, token2, swapPair, user0)
         
         // verify average price after 2 hours
         await waitSeconds(2 * 60 * 60)
-        await uniswapV2Pair.sync()
+        await swapPair.sync()
 
         // get new price
-        const [, , blockTimestamp_2] = await uniswapV2Pair.getReserves()
-        const price0_2 = await uniswapV2Pair.price0CumulativeLast()
-        const price1_2 = await uniswapV2Pair.price1CumulativeLast()
+        const [, , blockTimestamp_2] = await swapPair.getReserves()
+        const price0_2 = await swapPair.price0CumulativeLast()
+        const price1_2 = await swapPair.price1CumulativeLast()
 
         expect( price0_2 ).to.be.greaterThan(price0_1)
         expect( price1_2 ).to.be.greaterThan(price1_1)
@@ -124,7 +124,7 @@ describe("TWAP", function () {
         const price0 = toUnits(price0_2.sub(price0_1).div(interval_1))
         const price1 = toUnits(price1_2.sub(price1_1).div(interval_1))
 
-        const [reserves0, reserves1, ] = await uniswapV2Pair.getReserves()
+        const [reserves0, reserves1, ] = await swapPair.getReserves()
 
         const expPrice0 = toUnits(toWei(reserves1).div(reserves0))
         const expPrice1 = toUnits(toWei(reserves0).div(reserves1))

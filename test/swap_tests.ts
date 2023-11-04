@@ -7,7 +7,7 @@ import { Contract } from "ethers";
 
 describe("Swaps", function () {
     
-    let uniswapV2Pair: Contract;
+    let swapPair: Contract;
     let token1: Contract;
     let token2: Contract;
     let owner: SignerWithAddress;
@@ -16,7 +16,7 @@ describe("Swaps", function () {
     beforeEach(async function () {
         const data = await loadFixture(deployContracts);
         owner = data.owner
-        uniswapV2Pair = data.uniswapV2Pair
+        swapPair = data.swapPair
         token1 = data.token1
         token2 = data.token2
         user0 = data.user0
@@ -24,13 +24,13 @@ describe("Swaps", function () {
         const token1DepositAmount = toWei(100);
         const token2DepositAmount = toWei(10);
 
-        await token1.connect(owner).approve(uniswapV2Pair.address, token1DepositAmount)
-        await token2.connect(owner).approve(uniswapV2Pair.address, token2DepositAmount)
+        await token1.connect(owner).approve(swapPair.address, token1DepositAmount)
+        await token2.connect(owner).approve(swapPair.address, token2DepositAmount)
 
         const deadline = await getLastBlockTimestamp() + 100;
 
         // when adding the initial liquidity it transfers the desired amount of LP tokens
-        await uniswapV2Pair.connect(owner).addLiquidity(
+        await swapPair.connect(owner).addLiquidity(
             token1.address, // tokenA
             token2.address, // tokenB
             token1DepositAmount,  // amountADesired
@@ -41,7 +41,7 @@ describe("Swaps", function () {
             deadline
         )
 
-        return { uniswapV2Pair, token1, token2, user0 }
+        return { swapPair, token1, token2, user0 }
     })
 
     it("can swap token 0 for token 1", async function () {
@@ -50,14 +50,14 @@ describe("Swaps", function () {
         const amountOutMin = toWei(0.9)     // min amount of token2 expected to be received
 
         // approve token1 transfer
-        await token1.connect(user0).approve(uniswapV2Pair.address, tokenInAmount)
+        await token1.connect(user0).approve(swapPair.address, tokenInAmount)
         
         // get token balances before swap
         const balance1Before = await token1.balanceOf(user0.address);
         const balance2Before = await token2.balanceOf(user0.address);
 
         // perform the swap
-        await makeSwap(tokenInAmount, amountOutMin, token1, token2, uniswapV2Pair, user0)
+        await makeSwap(tokenInAmount, amountOutMin, token1, token2, swapPair, user0)
 
         // calcualte tokens spent and received
         const balance1After = await token1.balanceOf(user0.address);
@@ -76,14 +76,14 @@ describe("Swaps", function () {
         const amountOutMin = toWei(9)     // min amount of token1 expected to be received
 
         // approve token1 transfer
-        await token2.connect(user0).approve(uniswapV2Pair.address, tokenInAmount)
+        await token2.connect(user0).approve(swapPair.address, tokenInAmount)
         
         // get token balances before swap
         const balance2Before = await token2.balanceOf(user0.address);
         const balance1Before = await token1.balanceOf(user0.address);
 
         // perform the swap
-        await makeSwap(tokenInAmount, amountOutMin, token2, token1, uniswapV2Pair, user0)
+        await makeSwap(tokenInAmount, amountOutMin, token2, token1, swapPair, user0)
 
         // calcualte tokens spent and received
         const balance2After = await token2.balanceOf(user0.address);
