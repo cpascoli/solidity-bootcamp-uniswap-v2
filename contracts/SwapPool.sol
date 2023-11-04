@@ -16,7 +16,12 @@ import { ISwapPoolFactory } from "./interfaces/uniswap/ISwapPoolFactory.sol";
 import { IERC3156FlashLender } from "./interfaces/flashloan/IERC3156FlashLender.sol";
 import { IERC3156FlashBorrower } from "./interfaces/flashloan/IERC3156FlashBorrower.sol";
 
-
+/// @notice Pool for swapping 2 ERC20 tokens.
+/// @dev This contract is based on Uniswap V2 implementation, wiith some modifications:
+/// - Uses modern solidity version that does not require SafeMath.
+/// - Use PRBMath fixed point library.
+/// - Use Openzeppelin code, including ERC20, SafeTransfer, ReentrancyGuard, etc. 
+/// - Use EIP 3156 instead of implementing a flash swap the way Uniswap does.
 contract SwapPool is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, ReentrancyGuard {
 
     string public constant NAME = 'Uniswap V2';

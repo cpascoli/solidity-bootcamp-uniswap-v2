@@ -5,6 +5,7 @@ import { ISwapPoolFactory } from "./interfaces/uniswap/ISwapPoolFactory.sol";
 import { ISwapPoolPair } from "./interfaces/uniswap/ISwapPoolPair.sol";
 import { SwapPool } from "./SwapPool.sol";
 
+/// @notice Factory contract used to create instances of SwapPool for a pair of tokens.
 contract SwapPoolFactory is ISwapPoolFactory {
     address public feeTo;
     address public feeToSetter;
