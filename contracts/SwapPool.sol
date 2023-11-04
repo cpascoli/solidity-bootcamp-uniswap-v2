@@ -174,7 +174,9 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
         // burns liquidity and returns tokens
         (uint amount0, uint amount1) = _burnShares(to);
 
-        (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
+        (amountA, amountB) = tokenA == token0 && tokenB == token1 ? (amount0, amount1) :
+                            tokenB == token0 && tokenA == token1  ? (amount1, amount0) : (0, 0);
+
         require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
         require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
     }
@@ -201,17 +203,13 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
-            // * never overflows, and + overflow is desired
-            // price0CumulativeLast += uint(UQ112x112.fraction(_reserve1, _reserve0)._x) * timeElapsed;
-            // price1CumulativeLast += uint(UQ112x112.fraction(_reserve0, _reserve1)._x) * timeElapsed;
-
             price0CumulativeLast += _reserve1.div(_reserve0).mul(timeElapsed);
             price1CumulativeLast += _reserve0.div(_reserve1).mul(timeElapsed);
         }
         reserve0 = balance0;
         reserve1 = balance1;
         blockTimestampLast = blockTimestamp;
-        
+
         emit Sync(reserve0, reserve1);
     }
 
@@ -303,7 +301,8 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
   
     function _swap(uint amountOut, address input, address output, address to) private {
 
-        (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOut) : (amountOut, uint(0));
+        (uint amount0Out, uint amount1Out) = input == token0 && output == token1 ? (uint(0), amountOut) :
+            input == token1 && output == token0 ? (amountOut, uint(0)) : (uint(0), uint(0));
         
         require(amount0Out > 0 || amount1Out > 0, 'UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT');
         (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
@@ -361,8 +360,8 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
     }
 
     /**
-     * @dev Initiate a flash loan.
-     * @param receiver The receiver of the tokens in the loan, and the receiver of the callback.
+     * @notice Perform an ERC3156 flash loan for the token and amount provided.
+     * @param receiver The receiver of the loan, must implement IERC3156FlashBorrower.
      * @param token The loan currency.
      * @param amount The amount of tokens lent.
      * @param data Arbitrary data structure, intended to contain user-defined parameters.
@@ -372,12 +371,13 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
         address token,
         uint256 amount,
         bytes calldata data
-    ) external returns (bool) {
+    ) external nonReentrant returns (bool) {
 
+        require(amount > 0, "Flash loan amount can't be zero");
+        require (amount <= _maxFlashLoan(token), "Not enough reserves");
         // _flashFee reverts if token is not supported
         uint256 fee = _flashFee(token, amount);
-        require (amount <= _maxFlashLoan(token), "Not enough reserves");
-    
+
         // token is token0 or token1
         IERC20 loanToken = token == token0 ? IERC20(token0) : IERC20(token1);
 
@@ -396,15 +396,6 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
         // update reserves
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
-
-        //// verify reserve product invariant ////
-        // (uint amount0Out, uint amount1Out) = token == token1 ? (uint(0), amount) : (amount, uint(0));
-        // uint amount0In = balance0 > reserve0 - amount0Out ? balance0 - (reserve0 - amount0Out) : 0;
-        // uint amount1In = balance1 > reserve1 - amount1Out ? balance1 - (reserve1 - amount1Out) : 0;
-        // require(amount0In > 0 || amount1In > 0, 'UniswapV2: INSUFFICIENT_INPUT_AMOUNT');
-        // uint balance0Adjusted = (balance0 * 1000) - (amount0Out * 3); // balance0 - 0.3% fee on loan
-        // uint balance1Adjusted = (balance1 * 1000) - (amount1Out * 3); // balance1 - 0.3% fee on loan
-        // require(balance0Adjusted * balance1Adjusted >= uint(reserve0) * reserve1 * 1000**2, 'UniswapV2: K flashLoan');
 
         _update(balance0, balance1, reserve0, reserve1);
 
@@ -461,12 +452,7 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
     }
 
     function getReservesSorted(address tokenA, address tokenB) internal view returns (uint reserveA, uint reserveB) {
-        (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
-    }
-
-    function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
-        require(tokenA != tokenB, 'UniswapV2: IDENTICAL_ADDRESSES');
-        (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), 'UniswapV2: ZERO_ADDRESS');
+        (reserveA, reserveB) = tokenA == token0 && tokenB == token1 ? (reserve0, reserve1) :
+                            tokenA == token1 && tokenB == token0 ? (reserve1, reserve0) : (0, 0);
     }
 }
