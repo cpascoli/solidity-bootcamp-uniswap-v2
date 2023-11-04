@@ -23,7 +23,6 @@ contract FlashLoanClient is IERC3156FlashBorrower {
     /// Returns true if the loan wos successful, false otherwise
     function flashLoan(address token, uint256 amount) external returns (bool) {
 
-        // uint256 fees = lender.flashFee(token, amount);
         uint256 maxLoan = lender.maxFlashLoan(token);
         if (amount > maxLoan) {
             return false;
