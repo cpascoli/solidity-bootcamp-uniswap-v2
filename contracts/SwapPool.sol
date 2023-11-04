@@ -1,26 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import { PRBMathUD60x18Typed } from "prb-math/contracts/PRBMathUD60x18Typed.sol";
-import { PRBMath } from "prb-math/contracts/PRBMath.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
+import { PRBMathUD60x18Typed } from "prb-math/contracts/PRBMathUD60x18Typed.sol";
+import { PRBMath } from "prb-math/contracts/PRBMath.sol";
 
 import { ISwapPoolPair } from "./interfaces/uniswap/ISwapPoolPair.sol";
 import { ISwapPoolFactory } from "./interfaces/uniswap/ISwapPoolFactory.sol";
 import { IERC3156FlashLender } from "./interfaces/flashloan/IERC3156FlashLender.sol";
 import { IERC3156FlashBorrower } from "./interfaces/flashloan/IERC3156FlashBorrower.sol";
-import { SwapPoolERC20 } from "./SwapPoolERC20.sol";
 
-import "hardhat/console.sol";
 
-contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, ReentrancyGuard {
+contract SwapPool is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, ReentrancyGuard {
 
+    string public constant NAME = 'Uniswap V2';
+    string public constant SYMBOL = 'UNI-V2';
     uint public constant MINIMUM_LIQUIDITY = 10**3;
-    bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
 
+    // the factory contract used to instantiate this contract
     address public factory;
 
     // addresses of token0 and token1 are sorted
@@ -40,37 +43,12 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
         _;
     }
 
-    constructor() SwapPoolERC20() {
+    constructor() ERC20(NAME, SYMBOL) {
         factory = msg.sender;
     }
 
-    function decimals() public view override(SwapPoolERC20, ISwapPoolPair) returns (uint8) {
+    function decimals() public view override(ERC20) returns (uint8) {
         return super.decimals();
-    }
-
-    function DOMAIN_SEPARATOR() public view override(SwapPoolERC20, ISwapPoolPair) returns (bytes32) {
-        return super.DOMAIN_SEPARATOR();
-    }
-
-    function PERMIT_TYPEHASH() public pure override(SwapPoolERC20, ISwapPoolPair) returns (bytes32) {
-        return super.PERMIT_TYPEHASH();
-    }
-
-    function nonces(address owner) public view override(SwapPoolERC20, ISwapPoolPair) returns (uint) {
-        return super.nonces(owner);
-    }
-
-    function permit(
-        address owner,
-        address spender,
-        uint value,
-        uint deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public override(SwapPoolERC20, ISwapPoolPair) {
-
-        return super.permit(owner, spender, value, deadline, v, r, s);
     }
 
     function getReserves() public view returns (uint _reserve0, uint _reserve1, uint32 _blockTimestampLast) {
@@ -80,7 +58,7 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
     }
 
     // called once by the factory at time of deployment
-    function initialize(address _token0, address _token1) external {
+    function initialize(address _token0, address _token1) external initializer {
         require(msg.sender == factory, 'UniswapV2: FORBIDDEN');
         token0 = _token0;
         token1 = _token1;
