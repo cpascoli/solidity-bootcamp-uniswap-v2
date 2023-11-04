@@ -55,9 +55,9 @@ export const deployContracts = async () => {
 
     // token pair
     const Token20 = await ethers.getContractFactory("Token20");
-    const token1 = await Token20.deploy(toWei(1_000_000), "Token A", "A");
-    const token2 = await Token20.deploy(toWei(200_000), "Token B", "B");
-    await swapPoolFactory.createPair(token1.address, token2.address)
+    const tokenA = await Token20.deploy(toWei(1_000_000), "Token A", "A");
+    const tokenB = await Token20.deploy(toWei(200_000), "Token B", "B");
+    await swapPoolFactory.createPair(tokenA.address, tokenB.address)
     const pairAddress = await swapPoolFactory.allPairs(0)
     const swapPair = new ethers.Contract(pairAddress, PAIR_ABI.abi, owner);
 
@@ -65,6 +65,9 @@ export const deployContracts = async () => {
     const FlashLoanClient = await ethers.getContractFactory("FlashLoanClient");
     const flashLoanClient = await FlashLoanClient.deploy(swapPair.address);
 
+    // return tokens ordered as in the pool
+    const token1 = swapPair.token0() == tokenA.address ? tokenA : tokenB;
+    const token2 = swapPair.token1() == tokenB.address ? tokenB : tokenA;
 
     // transfer some tokens to user0
     await token1.connect(owner).transfer(user0.address, toWei(100))
