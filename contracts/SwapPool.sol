@@ -18,8 +18,6 @@ import "hardhat/console.sol";
 
 contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, ReentrancyGuard {
 
-    // using PRBMathUD60x18Typed for uint256;
-
     uint public constant MINIMUM_LIQUIDITY = 10**3;
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
 
@@ -203,28 +201,23 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
     // update reserves and, on the first call per block, price accumulators
     function _update(uint balance0, uint balance1, uint _reserve0, uint _reserve1) private {
 
-        console.log("_update balances:", balance0, balance1);
-        console.log("_update reserves:", reserve0, _reserve1);
-
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
             
             // update the sum of the price for every second in the entire history of the contract.
             // https://docs.uniswap.org/contracts/v2/concepts/core-concepts/oracles
-            
-            price0CumulativeLast += PRBMathUD60x18Typed.div(
-                PRBMath.UD60x18({ value: _reserve1}),
-                PRBMath.UD60x18({ value: _reserve0})
-            ).value * timeElapsed;
+            unchecked {
+                price0CumulativeLast += PRBMathUD60x18Typed.div(
+                    PRBMath.UD60x18({ value: _reserve1}),
+                    PRBMath.UD60x18({ value: _reserve0})
+                ).value * timeElapsed;
 
-            price1CumulativeLast += PRBMathUD60x18Typed.div(
-                PRBMath.UD60x18({ value: _reserve0}),
-                PRBMath.UD60x18({ value: _reserve1})
-            ).value * timeElapsed;
-
-            console.log("_update price0:", timeElapsed, price0CumulativeLast);  // 720 2
-            console.log("_update price1:", timeElapsed, price1CumulativeLast); // 18005 000000000000000000
+                price1CumulativeLast += PRBMathUD60x18Typed.div(
+                    PRBMath.UD60x18({ value: _reserve0}),
+                    PRBMath.UD60x18({ value: _reserve1})
+                ).value * timeElapsed; 
+            }
         }
 
         reserve0 = balance0;

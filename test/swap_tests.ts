@@ -1,7 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { deployContracts, toUnits, toWei, getLastBlockTimestamp } from "./helpers/test_helpers";
+import { deployContracts, toUnits, toWei, getLastBlockTimestamp, makeSwap } from "./helpers/test_helpers";
 import { Contract } from "ethers";
 
 
@@ -56,17 +56,8 @@ describe("Swaps", function () {
         const balance1Before = await token1.balanceOf(user0.address);
         const balance2Before = await token2.balanceOf(user0.address);
 
-        const deadline = await getLastBlockTimestamp() + 100;
-
         // perform the swap
-        await uniswapV2Pair.connect(user0).swapExactTokensForTokens(
-            tokenInAmount, // amountIn
-            amountOutMin,   // amountOutMin
-            token1.address, // tokenIn
-            token2.address,  // tokenOut
-            user0.address,
-            deadline
-        )
+        await makeSwap(tokenInAmount, amountOutMin, token1, token2, uniswapV2Pair, user0)
 
         // calcualte tokens spent and received
         const balance1After = await token1.balanceOf(user0.address);
@@ -91,17 +82,8 @@ describe("Swaps", function () {
         const balance2Before = await token2.balanceOf(user0.address);
         const balance1Before = await token1.balanceOf(user0.address);
 
-        const deadline = await getLastBlockTimestamp() + 100;
-
         // perform the swap
-        await uniswapV2Pair.connect(user0).swapExactTokensForTokens(
-            tokenInAmount, // amountIn
-            amountOutMin,   // amountOutMin
-            token2.address, // tokenIn
-            token1.address,  // tokenOut
-            user0.address,
-            deadline
-        )
+        await makeSwap(tokenInAmount, amountOutMin, token2, token1, uniswapV2Pair, user0)
 
         // calcualte tokens spent and received
         const balance2After = await token2.balanceOf(user0.address);

@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
-import { BigNumber, constants } from "ethers";
+import { BigNumber, Contract, constants } from "ethers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import PAIR_ABI from "../../artifacts/contracts/SwapPool.sol/SwapPool.json";
 
@@ -70,4 +71,28 @@ export const deployContracts = async () => {
     await token2.connect(owner).transfer(user0.address, toWei(100))
 
     return { swapPoolFactory, uniswapV2Pair, flashLoanClient, token1, token2, owner, user0, user1, user2 };
+}
+
+
+export const makeSwap = async (
+    tokenInAmount: BigNumber, 
+    amountOutMin: BigNumber, 
+    tokoenIn: Contract,
+    tokenOut: Contract,
+    swapPair: Contract,
+    user: SignerWithAddress,
+) => {
+    // approve tokenIn transfer
+    await tokoenIn.connect(user).approve(swapPair.address, tokenInAmount)
+    
+    // perform the swap
+    const deadline = await getLastBlockTimestamp() + 100;
+    await swapPair.connect(user).swapExactTokensForTokens(
+        tokenInAmount, // amountIn
+        amountOutMin,   // amountOutMin
+        tokoenIn.address, // tokenIn
+        tokenOut.address,  // tokenOut
+        user.address,
+        deadline
+    )
 }

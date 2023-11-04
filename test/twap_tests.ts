@@ -1,7 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { assert, expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { deployContracts, toUnits, toWei, getLastBlockTimestamp, waitSeconds } from "./helpers/test_helpers";
+import { deployContracts, makeSwap, toUnits, toWei, getLastBlockTimestamp, waitSeconds } from "./helpers/test_helpers";
 import { Contract } from "ethers";
 
 
@@ -44,8 +44,9 @@ describe("TWAP", function () {
         return { uniswapV2Pair, token1, token2, user0 }
     })
 
-    it("has cumulative price for token 0 and token 1", async function () {
+    it("ptovides the cumulative price for token 0 and token 1", async function () {
 
+        const [, , blockTimestamp_0] = await uniswapV2Pair.getReserves()
         const price0_0 = await uniswapV2Pair.price0CumulativeLast()
         const price1_0 = await uniswapV2Pair.price1CumulativeLast()
 
@@ -53,17 +54,23 @@ describe("TWAP", function () {
         await waitSeconds(60 * 60)
         await uniswapV2Pair.sync()
 
+        const [, , blockTimestamp_1] = await uniswapV2Pair.getReserves()
         const price0_1 = await uniswapV2Pair.price0CumulativeLast()
         const price1_1 = await uniswapV2Pair.price1CumulativeLast()
 
         expect( price0_1 ).to.be.greaterThan(price0_0)
         expect( price1_1 ).to.be.greaterThan(price1_0)
 
+        const interval_0 = blockTimestamp_1 - blockTimestamp_0
+        expect( toUnits( price0_1.sub(price0_0).div(interval_0)) ).to.equal( 0.2 )
+        expect( toUnits( price1_1.sub(price1_0).div(interval_0)) ).to.equal( 5 )
+
         // wait 2 hours and synch prices
         const interval = 2 * 60 * 60;
         await waitSeconds(interval)
         await uniswapV2Pair.sync()
 
+        const [, , blockTimestamp_2] = await uniswapV2Pair.getReserves()
         const price0_2 = await uniswapV2Pair.price0CumulativeLast()
         const price1_2 = await uniswapV2Pair.price1CumulativeLast()
 
@@ -71,8 +78,59 @@ describe("TWAP", function () {
         expect( price1_2 ).to.be.greaterThan(price1_1)
 
         // verify average price over 2 hours
-        expect( toUnits( price0_2.sub(price0_1).div(interval)) ).to.approximately( 0.2, 0.1 )
-        expect( toUnits( price1_2.sub(price1_1).div(interval)) ).to.approximately( 5, 0.1 )
+        const interval_1 = blockTimestamp_2 - blockTimestamp_1
+        expect( toUnits( price0_2.sub(price0_1).div(interval_1)) ).to.equal( 0.2 )
+        expect( toUnits( price1_2.sub(price1_1).div(interval_1)) ).to.equal( 5 )
+    });
+
+
+    it("updates the cumulative price for token 0 and token 1", async function () {
+
+        const [, , blockTimestamp_0] = await uniswapV2Pair.getReserves()
+        const price0_0 = await uniswapV2Pair.price0CumulativeLast()
+        const price1_0 = await uniswapV2Pair.price1CumulativeLast()
+
+        // wait 1 hours and synch prices
+        await waitSeconds(60 * 60)
+        await uniswapV2Pair.sync()
+
+        const [, , blockTimestamp_1] = await uniswapV2Pair.getReserves()
+        const price0_1 = await uniswapV2Pair.price0CumulativeLast()
+        const price1_1 = await uniswapV2Pair.price1CumulativeLast()
+
+        expect( price0_1 ).to.be.greaterThan(price0_0)
+        expect( price1_1 ).to.be.greaterThan(price1_0)
+
+        const interval_0 = blockTimestamp_1 - blockTimestamp_0
+        expect( toUnits( price0_1.sub(price0_0).div(interval_0)) ).to.equal( 0.2 )
+        expect( toUnits( price1_1.sub(price1_0).div(interval_0)) ).to.equal( 5 )
+
+        // make a swap
+        await makeSwap(toWei(10), toWei(0.9), token1, token2, uniswapV2Pair, user0)
+        
+        // verify average price after 2 hours
+        await waitSeconds(2 * 60 * 60)
+        await uniswapV2Pair.sync()
+
+        // get new price
+        const [, , blockTimestamp_2] = await uniswapV2Pair.getReserves()
+        const price0_2 = await uniswapV2Pair.price0CumulativeLast()
+        const price1_2 = await uniswapV2Pair.price1CumulativeLast()
+
+        expect( price0_2 ).to.be.greaterThan(price0_1)
+        expect( price1_2 ).to.be.greaterThan(price1_1)
+    
+        const interval_1 = blockTimestamp_2 - blockTimestamp_1
+        const price0 = toUnits(price0_2.sub(price0_1).div(interval_1))
+        const price1 = toUnits(price1_2.sub(price1_1).div(interval_1))
+
+        const [reserves0, reserves1, ] = await uniswapV2Pair.getReserves()
+
+        const expPrice0 = toUnits(toWei(reserves1).div(reserves0))
+        const expPrice1 = toUnits(toWei(reserves0).div(reserves1))
+
+        expect(price0).to.be.approximately(expPrice0, 0.001)
+        expect(price1).to.be.approximately(expPrice1, 0.01)
     });
 
     

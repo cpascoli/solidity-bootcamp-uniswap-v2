@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { deployContracts } from "./helpers/test_helpers";
 
 
-describe("Pool Config", function () {
+describe("SwapPair Config", function () {
 
     it("has the expected factory", async function () {
         const { swapPoolFactory, uniswapV2Pair } = await loadFixture(deployContracts);
