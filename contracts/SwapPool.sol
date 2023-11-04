@@ -81,7 +81,7 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
 
     // called once by the factory at time of deployment
     function initialize(address _token0, address _token1) external {
-        require(msg.sender == factory, 'UniswapV2: FORBIDDEN'); // sufficient check
+        require(msg.sender == factory, 'UniswapV2: FORBIDDEN');
         token0 = _token0;
         token1 = _token1;
     }
