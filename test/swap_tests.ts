@@ -44,7 +44,7 @@ describe("Swaps", function () {
         return { uniswapV2Pair, token1, token2, user0 }
     })
 
-    it("can swap token 1 for token 2", async function () {
+    it("can swap token 0 for token 1", async function () {
 
         const tokenInAmount = toWei(10);    // amount of token1 spent
         const amountOutMin = toWei(0.9)     // min amount of token2 expected to be received
@@ -79,7 +79,7 @@ describe("Swaps", function () {
         expect(tokensReceived).to.be.greaterThanOrEqual(amountOutMin) // 0.9066108938801491 token2
     });
 
-    it("can swap token 2 for token 1", async function () {
+    it("can swap token 1 for token 0", async function () {
 
         const tokenInAmount = toWei(1);  // amount of token2 spent
         const amountOutMin = toWei(9)     // min amount of token1 expected to be received

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import { PRBMathUD60x18 } from "prb-math/contracts/PRBMathUD60x18.sol";
+import { PRBMathUD60x18Typed } from "prb-math/contracts/PRBMathUD60x18Typed.sol";
+import { PRBMath } from "prb-math/contracts/PRBMath.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -13,10 +14,11 @@ import { IERC3156FlashLender } from "./interfaces/flashloan/IERC3156FlashLender.
 import { IERC3156FlashBorrower } from "./interfaces/flashloan/IERC3156FlashBorrower.sol";
 import { SwapPoolERC20 } from "./SwapPoolERC20.sol";
 
+import "hardhat/console.sol";
 
 contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, ReentrancyGuard {
 
-    using PRBMathUD60x18 for uint256;
+    // using PRBMathUD60x18Typed for uint256;
 
     uint public constant MINIMUM_LIQUIDITY = 10**3;
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
@@ -200,12 +202,31 @@ contract SwapPool is ISwapPoolPair, SwapPoolERC20, IERC3156FlashLender, Reentran
 
     // update reserves and, on the first call per block, price accumulators
     function _update(uint balance0, uint balance1, uint _reserve0, uint _reserve1) private {
+
+        console.log("_update balances:", balance0, balance1);
+        console.log("_update reserves:", reserve0, _reserve1);
+
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
-            price0CumulativeLast += _reserve1.div(_reserve0).mul(timeElapsed);
-            price1CumulativeLast += _reserve0.div(_reserve1).mul(timeElapsed);
+            
+            // update the sum of the price for every second in the entire history of the contract.
+            // https://docs.uniswap.org/contracts/v2/concepts/core-concepts/oracles
+            
+            price0CumulativeLast += PRBMathUD60x18Typed.div(
+                PRBMath.UD60x18({ value: _reserve1}),
+                PRBMath.UD60x18({ value: _reserve0})
+            ).value * timeElapsed;
+
+            price1CumulativeLast += PRBMathUD60x18Typed.div(
+                PRBMath.UD60x18({ value: _reserve0}),
+                PRBMath.UD60x18({ value: _reserve1})
+            ).value * timeElapsed;
+
+            console.log("_update price0:", timeElapsed, price0CumulativeLast);  // 720 2
+            console.log("_update price1:", timeElapsed, price1CumulativeLast); // 18005 000000000000000000
         }
+
         reserve0 = balance0;
         reserve1 = balance1;
         blockTimestampLast = blockTimestamp;

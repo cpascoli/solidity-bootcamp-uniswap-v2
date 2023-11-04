@@ -1,11 +1,11 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { deployContracts, toUnits, toWei, getLastBlockTimestamp } from "./helpers/test_helpers";
+import { deployContracts, toUnits, toWei, getLastBlockTimestamp, waitSeconds } from "./helpers/test_helpers";
 import { Contract } from "ethers";
 
 
-describe("Swaps", function () {
+describe("TWAP", function () {
     
     let uniswapV2Pair: Contract;
     let token1: Contract;
@@ -22,7 +22,7 @@ describe("Swaps", function () {
         user0 = data.user0
 
         const token1DepositAmount = toWei(100);
-        const token2DepositAmount = toWei(10);
+        const token2DepositAmount = toWei(20);
 
         await token1.connect(owner).approve(uniswapV2Pair.address, token1DepositAmount)
         await token2.connect(owner).approve(uniswapV2Pair.address, token2DepositAmount)
@@ -44,74 +44,36 @@ describe("Swaps", function () {
         return { uniswapV2Pair, token1, token2, user0 }
     })
 
-    it("can swap token 1 for token 2", async function () {
+    it("has cumulative price for token 0 and token 1", async function () {
 
-        const tokenInAmount = toWei(10);    // amount of token1 spent
-        const amountOutMin = toWei(0.9)     // min amount of token2 expected to be received
+        const price0_0 = await uniswapV2Pair.price0CumulativeLast()
+        const price1_0 = await uniswapV2Pair.price1CumulativeLast()
 
-        // approve token1 transfer
-        await token1.connect(user0).approve(uniswapV2Pair.address, tokenInAmount)
-        
-        // get token balances before swap
-        const balance1Before = await token1.balanceOf(user0.address);
-        const balance2Before = await token2.balanceOf(user0.address);
+        // wait 1 hours and synch prices
+        await waitSeconds(60 * 60)
+        await uniswapV2Pair.sync()
 
-        const deadline = await getLastBlockTimestamp() + 100;
+        const price0_1 = await uniswapV2Pair.price0CumulativeLast()
+        const price1_1 = await uniswapV2Pair.price1CumulativeLast()
 
-        // perform the swap
-        await uniswapV2Pair.connect(user0).swapExactTokensForTokens(
-            tokenInAmount, // amountIn
-            amountOutMin,   // amountOutMin
-            token1.address, // tokenIn
-            token2.address,  // tokenOut
-            user0.address,
-            deadline
-        )
+        expect( price0_1 ).to.be.greaterThan(price0_0)
+        expect( price1_1 ).to.be.greaterThan(price1_0)
 
-        // calcualte tokens spent and received
-        const balance1After = await token1.balanceOf(user0.address);
-        const balance2After = await token2.balanceOf(user0.address);
-        
-        const tokensSpent = balance1Before.sub(balance1After)
-        const tokensReceived = balance2After.sub(balance2Before)
+        // wait 2 hours and synch prices
+        const interval = 2 * 60 * 60;
+        await waitSeconds(interval)
+        await uniswapV2Pair.sync()
 
-        expect(tokensSpent).to.equal(tokenInAmount) // 10 token1
-        expect(tokensReceived).to.be.greaterThanOrEqual(amountOutMin) // 0.9066108938801491 token2
+        const price0_2 = await uniswapV2Pair.price0CumulativeLast()
+        const price1_2 = await uniswapV2Pair.price1CumulativeLast()
+
+        expect( price0_2 ).to.be.greaterThan(price0_1)
+        expect( price1_2 ).to.be.greaterThan(price1_1)
+
+        // verify average price over 2 hours
+        expect( toUnits( price0_2.sub(price0_1).div(interval)) ).to.approximately( 0.2, 0.1 )
+        expect( toUnits( price1_2.sub(price1_1).div(interval)) ).to.approximately( 5, 0.1 )
     });
 
-    it("can swap token 2 for token 1", async function () {
-
-        const tokenInAmount = toWei(1);  // amount of token2 spent
-        const amountOutMin = toWei(9)     // min amount of token1 expected to be received
-
-        // approve token1 transfer
-        await token2.connect(user0).approve(uniswapV2Pair.address, tokenInAmount)
-        
-        // get token balances before swap
-        const balance2Before = await token2.balanceOf(user0.address);
-        const balance1Before = await token1.balanceOf(user0.address);
-
-        const deadline = await getLastBlockTimestamp() + 100;
-
-        // perform the swap
-        await uniswapV2Pair.connect(user0).swapExactTokensForTokens(
-            tokenInAmount, // amountIn
-            amountOutMin,   // amountOutMin
-            token2.address, // tokenIn
-            token1.address,  // tokenOut
-            user0.address,
-            deadline
-        )
-
-        // calcualte tokens spent and received
-        const balance2After = await token2.balanceOf(user0.address);
-        const balance1After = await token1.balanceOf(user0.address);
-        
-        const tokensSpent = balance2Before.sub(balance2After)
-        const tokensReceived = balance1After.sub(balance1Before)
-
-        expect(tokensSpent).to.equal(tokenInAmount) // 1 token2
-        expect(tokensReceived).to.be.greaterThanOrEqual(amountOutMin) // 9.066108938801491 token1
-    });
     
 });
