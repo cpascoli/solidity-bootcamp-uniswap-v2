@@ -11,8 +11,13 @@ describe("SwapPair Config", function () {
     });
 
     it("has no reserves", async function () {
-        const { swapPoolFactory, swapPair } = await loadFixture(deployContracts);
+        const { swapPair } = await loadFixture(deployContracts);
         expect(await swapPair.getReserves()).to.deep.equal( [0, 0, 0] )
+    });
+
+    it("reverts if initialized twice", async function () {
+        const { swapPair, token1, token2 } = await loadFixture(deployContracts);
+        await expect( swapPair.initialize(token1.address, token2.address) ).to.be.revertedWith("Initializable: contract is already initialized")
     });
 
 });
