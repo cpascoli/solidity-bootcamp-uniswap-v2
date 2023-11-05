@@ -185,22 +185,25 @@ contract SwapPool is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
     function _update(uint balance0, uint balance1, uint _reserve0, uint _reserve1) private {
 
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
-        uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+        uint32 timeElapsed;
+
+        unchecked {
+            timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+        }
+
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
             
             // update the sum of the price for every second in the entire history of the contract.
             // https://docs.uniswap.org/contracts/v2/concepts/core-concepts/oracles
-            unchecked {
-                price0CumulativeLast += PRBMathUD60x18Typed.div(
-                    PRBMath.UD60x18({ value: _reserve1}),
-                    PRBMath.UD60x18({ value: _reserve0})
-                ).value * timeElapsed;
+            price0CumulativeLast += PRBMathUD60x18Typed.div(
+                PRBMath.UD60x18({ value: _reserve1}),
+                PRBMath.UD60x18({ value: _reserve0})
+            ).value * timeElapsed;
 
-                price1CumulativeLast += PRBMathUD60x18Typed.div(
-                    PRBMath.UD60x18({ value: _reserve0}),
-                    PRBMath.UD60x18({ value: _reserve1})
-                ).value * timeElapsed; 
-            }
+            price1CumulativeLast += PRBMathUD60x18Typed.div(
+                PRBMath.UD60x18({ value: _reserve0}),
+                PRBMath.UD60x18({ value: _reserve1})
+            ).value * timeElapsed; 
         }
 
         reserve0 = balance0;
