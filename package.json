@@ -32,6 +32,6 @@
     "@openzeppelin/test-helpers": "^0.5.16",
     "dotenv": "^16.3.1",
     "hardhat": "^2.12.6",
-    "prb-math": "^2.4.3"
+    "solady": "^0.0.138"
   }
 }
