@@ -382,7 +382,7 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         
         require(amount0Out > 0 || amount1Out > 0, 'Insufficient Output Amount');
         (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
-        require(amount0Out < _reserve0 && amount1Out < _reserve1, 'InsufficeintLiquidity');
+        require(amount0Out < _reserve0 && amount1Out < _reserve1, 'Insufficeint Liquidity');
 
         uint balance0;
         uint balance1;
@@ -402,11 +402,11 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         uint amount1In = balance1 > _reserve1 - amount1Out ? balance1 - (_reserve1 - amount1Out) : 0;
         require(amount0In > 0 || amount1In > 0, 'Insufficient Input Amount');
 
-        { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
-        uint balance0Adjusted = (balance0 * SWAP_FEE_FACTOR) - (amount0In * SWAP_FEE); // 0.3% fee
-        uint balance1Adjusted = (balance1 * SWAP_FEE_FACTOR) - (amount1In * SWAP_FEE); // 0.3% fee
-        require(balance0Adjusted * balance1Adjusted >= uint(_reserve0) * _reserve1 * SWAP_FEE_FACTOR**2, 'Invalid K');
-        }
+        // { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
+        // uint balance0Adjusted = (balance0 * SWAP_FEE_FACTOR) - (amount0In * SWAP_FEE); // 0.3% fee
+        // uint balance1Adjusted = (balance1 * SWAP_FEE_FACTOR) - (amount1In * SWAP_FEE); // 0.3% fee
+        // require(balance0Adjusted * balance1Adjusted >= uint(_reserve0) * _reserve1 * SWAP_FEE_FACTOR**2, 'Invalid K');
+        // }
 
         _update(balance0, balance1, _reserve0, _reserve1);
 
@@ -431,7 +431,8 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
     }
 
 
-    /// @notice Given an output amount of an asset returns the maximum input amount of the other asset
+    /// @notice Given an output amount of an asset returns the maximum input amount of the other asset.
+    /// @dev The ammountIn returned includes swap fees. 
     function getAmountIn(uint amountOut, address input, address output) private view returns (uint amountIn) {
         require(amountOut > 0, 'Insufficient Output Amount');
         (uint reserveIn, uint reserveOut) = getReservesSorted(input, output);
@@ -444,7 +445,8 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
     }
 
 
-    /// @notice Given an input amount of an asset returns the maximum output amount of the other asset
+    /// @notice Given an input amount of an asset returns the maximum output amount of the other asset.
+    /// @dev The ammountOut returned is net of swap fees. 
     function getAmountOut(uint amountIn, address input, address output) private view returns (uint amountOut) {
         require(amountIn > 0, 'Insufficent Input Amount');
         (uint reserveIn, uint reserveOut) = getReservesSorted(input, output);
