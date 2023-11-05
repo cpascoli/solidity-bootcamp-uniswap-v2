@@ -355,6 +355,8 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
 
         _burn(address(this), liquidity);
 
+        require(totalSupply() >= MINIMUM_LIQUIDITY, "Below minimum shares balance");
+
         SafeERC20.safeTransfer(IERC20(_token0), recipient, amount0);
         SafeERC20.safeTransfer(IERC20(_token1), recipient, amount1);
 
