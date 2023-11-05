@@ -7,7 +7,7 @@ describe("Liquidity", function () {
 
     describe("Adding liquidity", function () {
 
-        it("add tokens to the reserves", async function () {
+        it("adds liquidity to the pool", async function () {
             const { swapPair, token1, token2, user0 } = await loadFixture(deployContracts);
             const token1DepositAmount = toWei(100);
             const token2DepositAmount = toWei(10);
@@ -35,7 +35,7 @@ describe("Liquidity", function () {
             expect(reserve1).to.equal(token2DepositAmount)
         });
 
-        it("returns LP tokens to the user", async function () {
+        it("mints LP tokens to the user", async function () {
             const { swapPair, token1, token2, user0 } = await loadFixture(deployContracts);
             const token1DepositAmount = toWei(100);
             const token2DepositAmount = toWei(10);
@@ -64,7 +64,7 @@ describe("Liquidity", function () {
 
     describe("Removing liquidity", function () {
 
-        it("can remove the liquidity provided", async function () {
+        it("removes liquidity from the pool", async function () {
             const { swapPair, token1, token2, user0 } = await loadFixture(deployContracts);
 
             const token1DepositAmount = toWei(100);
@@ -110,7 +110,7 @@ describe("Liquidity", function () {
             expect(reserve1).to.lessThan( toWei(0.00001) ); // 317 wei
         });
 
-        it("burns LP tokens", async function () {
+        it("burns LP tokens from the user", async function () {
             const { swapPair, token1, token2, user0 } = await loadFixture(deployContracts);
 
             const token1DepositAmount = toWei(100);

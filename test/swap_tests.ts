@@ -44,10 +44,10 @@ describe("Swaps", function () {
         return { swapPair, token1, token2, user0 }
     })
 
-    it("can swap token 0 for token 1", async function () {
+    it("swaps token 0 for token 1", async function () {
 
-        const tokenInAmount = toWei(10);    // amount of token1 spent
-        const amountOutMin = toWei(0.9)     // min amount of token2 expected to be received
+        const tokenInAmount = toWei(10);  // amount of token1 spent
+        const amountOutMin = toWei(0.9)   // min amount of token2 expected to be received
 
         // approve token1 transfer
         await token1.connect(user0).approve(swapPair.address, tokenInAmount)
@@ -66,14 +66,14 @@ describe("Swaps", function () {
         const tokensSpent = balance1Before.sub(balance1After)
         const tokensReceived = balance2After.sub(balance2Before)
 
-        expect(tokensSpent).to.equal(tokenInAmount) // 10 token1
-        expect(tokensReceived).to.be.greaterThanOrEqual(amountOutMin) // 0.9066108938801491 token2
+        expect(tokensSpent).to.equal(tokenInAmount)
+        expect(tokensReceived).to.be.greaterThanOrEqual(amountOutMin)
     });
 
-    it("can swap token 1 for token 0", async function () {
+    it("swaps token 1 for token 0", async function () {
 
         const tokenInAmount = toWei(1);  // amount of token2 spent
-        const amountOutMin = toWei(9)     // min amount of token1 expected to be received
+        const amountOutMin = toWei(9)    // min amount of token1 expected to be received
 
         // approve token1 transfer
         await token2.connect(user0).approve(swapPair.address, tokenInAmount)
@@ -92,8 +92,8 @@ describe("Swaps", function () {
         const tokensSpent = balance2Before.sub(balance2After)
         const tokensReceived = balance1After.sub(balance1Before)
 
-        expect(tokensSpent).to.equal(tokenInAmount) // 1 token2
-        expect(tokensReceived).to.be.greaterThanOrEqual(amountOutMin) // 9.066108938801491 token1
+        expect(tokensSpent).to.equal(tokenInAmount)
+        expect(tokensReceived).to.be.greaterThanOrEqual(amountOutMin)
     });
     
 });

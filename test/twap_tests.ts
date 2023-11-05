@@ -44,7 +44,7 @@ describe("TWAP", function () {
         return { swapPair, token1, token2, user0 }
     })
 
-    it("ptovides the cumulative price for token 0 and token 1", async function () {
+    it("provides the average price over a time interval", async function () {
 
         const [, , blockTimestamp_0] = await swapPair.getReserves()
         const price0_0 = await swapPair.price0CumulativeLast()
@@ -61,6 +61,7 @@ describe("TWAP", function () {
         expect( price0_1 ).to.be.greaterThan(price0_0)
         expect( price1_1 ).to.be.greaterThan(price1_0)
 
+        // verify average price over thr last 1 hour
         const interval_0 = blockTimestamp_1 - blockTimestamp_0
         expect( toUnits( price0_1.sub(price0_0).div(interval_0)) ).to.equal( 0.2 )
         expect( toUnits( price1_1.sub(price1_0).div(interval_0)) ).to.equal( 5 )
@@ -77,14 +78,14 @@ describe("TWAP", function () {
         expect( price0_2 ).to.be.greaterThan(price0_1)
         expect( price1_2 ).to.be.greaterThan(price1_1)
 
-        // verify average price over 2 hours
+        // verify average price over thr last 2 hours
         const interval_1 = blockTimestamp_2 - blockTimestamp_1
         expect( toUnits( price0_2.sub(price0_1).div(interval_1)) ).to.equal( 0.2 )
         expect( toUnits( price1_2.sub(price1_1).div(interval_1)) ).to.equal( 5 )
     });
 
 
-    it("updates the cumulative price for token 0 and token 1", async function () {
+    it("updates the cumulative price after a liquidity event", async function () {
 
         const [, , blockTimestamp_0] = await swapPair.getReserves()
         const price0_0 = await swapPair.price0CumulativeLast()
