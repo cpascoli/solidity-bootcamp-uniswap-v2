@@ -41,6 +41,20 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
     uint private reserve1;
     uint32 private blockTimestampLast;
 
+    error TransactionExpired();
+    error InvalidCaller();
+    error InsufficientOutputAmount();
+    error InsufficientIntputAmount();
+    error InsufficientAAmount();
+    error InsufficientBAmount();
+    error ZeroAmount();
+    error NotEnoughReserves();
+    error InsufficientLiquidity();
+    error InsufficientLiquidityMinted();
+    error InsufficientLiquidityBurned();
+    error TokenNotSupported();
+
+
     event Sync(uint reserve0, uint reserve1);
     event Mint(address indexed sender, uint amount0, uint amount1);
     event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
@@ -48,7 +62,7 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
    
 
     modifier ensure(uint deadline) {
-        require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
+        if (deadline < block.timestamp) revert TransactionExpired();
         _;
     }
 
@@ -60,7 +74,7 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
     /// @notice Initializer function that ptovides the addresses of the tokens to be swapped.
     /// @dev Called once by the factory at time of deployment
     function initialize(address _token0, address _token1) external initializer {
-        require(msg.sender == factory, 'Invalid Caller');
+        if (msg.sender != factory) revert InvalidCaller();
         token0 = _token0;
         token1 = _token1;
     }
@@ -75,7 +89,8 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         uint deadline
     ) external ensure(deadline) nonReentrant returns (uint amountOut) {
         amountOut = getAmountOut(amountIn, input, output);
-        require(amountOut >= amountOutMin, 'Insufficient Output Amount');
+        if(amountOut < amountOutMin) revert InsufficientOutputAmount();
+
         SafeERC20.safeTransferFrom(
             IERC20(input), msg.sender, address(this), amountIn
         );
@@ -92,7 +107,8 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         uint deadline
     ) external ensure(deadline) nonReentrant returns (uint amountIn) {
         amountIn = getAmountIn(amountOut, input, output);
-        require(amountIn <= amountInMax, 'Excessive Input Amount');
+        if(amountIn > amountInMax) revert InsufficientIntputAmount();
+
         SafeERC20.safeTransferFrom(
             IERC20(input), msg.sender, address(this), amountIn
         );
@@ -117,12 +133,14 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         } else {
             uint amountBOptimal = quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
-                require(amountBOptimal >= amountBMin, 'Insufficient B Amount');
+                if(amountBOptimal < amountBMin) revert InsufficientBAmount();
+
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
                 uint amountAOptimal = quote(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
-                require(amountAOptimal >= amountAMin, 'Insufficient A Amount');
+                if(amountAOptimal < amountAMin) revert InsufficientAAmount();
+
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
         }
@@ -154,8 +172,8 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         (amountA, amountB) = tokenA == token0 && tokenB == token1 ? (amount0, amount1) :
                             tokenB == token0 && tokenA == token1  ? (amount1, amount0) : (0, 0);
 
-        require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
-        require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
+        if(amountA < amountAMin) revert InsufficientAAmount();
+        if(amountB < amountBMin) revert InsufficientBAmount();
     }
 
 
@@ -207,9 +225,9 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         uint256 amount,
         bytes calldata data
     ) external nonReentrant returns (bool) {
+        if (amount == 0) revert ZeroAmount();
+        if (amount > _maxFlashLoan(token)) revert NotEnoughReserves();
 
-        require(amount > 0, "Flash loan amount can't be zero");
-        require (amount <= _maxFlashLoan(token), "Not enough reserves");
         // _flashFee reverts if token is not supported
         uint256 fee = _flashFee(token, amount);
 
@@ -306,7 +324,7 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
 
 
     /// @notice Mint shares to the recipient address equivalent to the liquidity provided.
-    function _mintShares(address recipient) private returns (uint liquidity) {
+    function _mintShares(address to) private returns (uint liquidity) {
         (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
@@ -318,12 +336,14 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         
         if (_totalSupply == 0) {
             liquidity = FixedPointMathLib.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
-           _mint(address(0xDEAD), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
+            // permanently lock the first MINIMUM_LIQUIDITY tokens
+            _mint(address(0xDEAD), MINIMUM_LIQUIDITY);
         } else {
             liquidity = FixedPointMathLib.min(amount0 * _totalSupply / _reserve0, amount1 * _totalSupply / _reserve1);
         }
-        require(liquidity > 0, 'INSUFFICIENT_LIQUIDITY_MINTED');
-        _mint(recipient, liquidity);
+        if(liquidity == 0) revert InsufficientLiquidityMinted();
+        
+        _mint(to, liquidity);
 
         _update(balance0, balance1, _reserve0, _reserve1);
         
@@ -337,7 +357,7 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
 
 
     /// @notice burns all the shares transferred to the contract and returns the liquidity to the recipient address.
-    function _burnShares(address recipient) private returns (uint amount0, uint amount1) {
+    function _burnShares(address to) private returns (uint amount0, uint amount1) {
         (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
         address _token0 = token0;                                // gas savings
         address _token1 = token1;                                // gas savings
@@ -351,14 +371,12 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         amount0 = liquidity * balance0 / _totalSupply; // using balances ensures pro-rata distribution
         amount1 = liquidity * balance1 / _totalSupply; // using balances ensures pro-rata distribution
         
-        require(amount0 > 0 && amount1 > 0, 'Insufficient Liquidity Burned');
+        if(amount0 == 0 || amount1 == 0) revert InsufficientLiquidityBurned();
 
         _burn(address(this), liquidity);
 
-        require(totalSupply() >= MINIMUM_LIQUIDITY, "Below minimum shares balance");
-
-        SafeERC20.safeTransfer(IERC20(_token0), recipient, amount0);
-        SafeERC20.safeTransfer(IERC20(_token1), recipient, amount1);
+        SafeERC20.safeTransfer(IERC20(_token0), to, amount0);
+        SafeERC20.safeTransfer(IERC20(_token1), to, amount1);
 
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
@@ -370,7 +388,7 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
             kLast = uint(reserve0) * reserve1;
         }
 
-        emit Burn(msg.sender, amount0, amount1, recipient);
+        emit Burn(msg.sender, amount0, amount1, to);
     }
 
 
@@ -380,9 +398,11 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         (uint amount0Out, uint amount1Out) = input == token0 && output == token1 ? (uint(0), amountOut) :
             input == token1 && output == token0 ? (amountOut, uint(0)) : (uint(0), uint(0));
         
-        require(amount0Out > 0 || amount1Out > 0, 'Insufficient Output Amount');
+        if(amount0Out == 0 && amount1Out == 0) revert InsufficientOutputAmount();
+
         (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
-        require(amount0Out < _reserve0 && amount1Out < _reserve1, 'Insufficeint Liquidity');
+        if(amount0Out >= _reserve0 || amount1Out >= _reserve1) revert InsufficientLiquidity();
+
 
         uint balance0;
         uint balance1;
@@ -400,7 +420,8 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
 
         uint amount0In = balance0 > _reserve0 - amount0Out ? balance0 - (_reserve0 - amount0Out) : 0;
         uint amount1In = balance1 > _reserve1 - amount1Out ? balance1 - (_reserve1 - amount1Out) : 0;
-        require(amount0In > 0 || amount1In > 0, 'Insufficient Input Amount');
+        if(amount0In == 0 && amount1In == 0) revert InsufficientIntputAmount();
+
 
         // { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
         // uint balance0Adjusted = (balance0 * SWAP_FEE_FACTOR) - (amount0In * SWAP_FEE); // 0.3% fee
@@ -415,7 +436,7 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
 
 
     function _flashFee(address token, uint256 amount) private view returns(uint256) {
-        require(token == token0 || token == token1, "Token not supported");
+        if(token != token0 && token != token1) revert TokenNotSupported();
 
         return amount * SWAP_FEE / SWAP_FEE_FACTOR;
     }
@@ -424,7 +445,7 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
     function _maxFlashLoan(address token) private view returns (uint256 reserve) {
         if (token == token0) {
             reserve = reserve0;
-        }
+        } 
         if (token == token1) {
             reserve = reserve1;
         }
@@ -434,9 +455,9 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
     /// @notice Given an output amount of an asset returns the maximum input amount of the other asset.
     /// @dev The ammountIn returned includes swap fees. 
     function getAmountIn(uint amountOut, address input, address output) private view returns (uint amountIn) {
-        require(amountOut > 0, 'Insufficient Output Amount');
+        if(amountOut == 0) revert InsufficientOutputAmount();
         (uint reserveIn, uint reserveOut) = getReservesSorted(input, output);
-        require(reserveIn > 0 && reserveOut > 0, 'Insufficent Liquidity');
+        if(reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
 
         uint numerator = reserveIn * amountOut * SWAP_FEE_FACTOR;
         uint denominator = (reserveOut - amountOut) * (SWAP_FEE_FACTOR - SWAP_FEE);
@@ -448,9 +469,10 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
     /// @notice Given an input amount of an asset returns the maximum output amount of the other asset.
     /// @dev The ammountOut returned is net of swap fees. 
     function getAmountOut(uint amountIn, address input, address output) private view returns (uint amountOut) {
-        require(amountIn > 0, 'Insufficent Input Amount');
+        if(amountIn == 0) revert InsufficientIntputAmount();
+
         (uint reserveIn, uint reserveOut) = getReservesSorted(input, output);
-        require(reserveIn > 0 && reserveOut > 0, 'Insufficent Liquidity');
+        if(reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
 
         uint amountInWithFee = amountIn * (SWAP_FEE_FACTOR - SWAP_FEE);
         uint numerator = amountInWithFee * reserveOut;
@@ -468,8 +490,7 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint amountA, uint reserveA, uint reserveB) private pure returns (uint amountB) {
-        require(amountA > 0, 'Insufficent Amount');
-        require(reserveA > 0 && reserveB > 0, 'Insufficent Liquidity');
+        if(reserveA == 0 || reserveB == 0) revert InsufficientLiquidity();
         amountB = amountA * reserveB / reserveA;
     }
 }

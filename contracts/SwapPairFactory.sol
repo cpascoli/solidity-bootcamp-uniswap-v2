@@ -7,11 +7,21 @@ import { SwapPair } from "./SwapPair.sol";
 
 /// @notice Factory contract used to create instances of SwapPair for a pair of tokens.
 contract SwapPairFactory is ISwapPoolFactory {
+    
     address public feeTo;
     address public feeToSetter;
-
     mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
+
+    error InvalidCaller();
+    error ZeroAddress();
+    error IdenticalAddresses();
+    error PairExists();
+
+    modifier onlyFeeToSetter {
+        if (msg.sender != feeToSetter) revert InvalidCaller();
+        _;
+    }
 
     constructor(address _feeToSetter) {
         feeToSetter = _feeToSetter;
@@ -22,10 +32,10 @@ contract SwapPairFactory is ISwapPoolFactory {
     }
 
     function createPair(address tokenA, address tokenB) external returns (address pair) {
-        require(tokenA != tokenB, 'Identical Addresses');
+        if(tokenA == tokenB) revert IdenticalAddresses();
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), 'Zero Address');
-        require(getPair[token0][token1] == address(0), 'Pair Exists'); // single check is sufficient
+        if(token0 == address(0)) revert ZeroAddress();
+        if(getPair[token0][token1] != address(0)) revert PairExists();
         
         // deploy pair contract
         bytes memory bytecode = type(SwapPair).creationCode;
@@ -42,13 +52,11 @@ contract SwapPairFactory is ISwapPoolFactory {
         emit PairCreated(token0, token1, pair, allPairs.length);
     }
 
-    function setFeeTo(address _feeTo) external {
-        require(msg.sender == feeToSetter, 'Invalid Caller');
+    function setFeeTo(address _feeTo) external onlyFeeToSetter {
         feeTo = _feeTo;
     }
 
-    function setFeeToSetter(address _feeToSetter) external {
-        require(msg.sender == feeToSetter, 'Invalid Caller');
+    function setFeeToSetter(address _feeToSetter) external onlyFeeToSetter {
         feeToSetter = _feeToSetter;
     }
 }

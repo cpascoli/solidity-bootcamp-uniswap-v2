@@ -95,5 +95,21 @@ describe("Swaps", function () {
         expect(tokensSpent).to.equal(tokenInAmount)
         expect(tokensReceived).to.be.greaterThanOrEqual(amountOutMin)
     });
+
+    it("reverts when swap is expired", async function () {
+        await token1.connect(user0).approve(swapPair.address, toWei(10))
+    
+        const deadline = await getLastBlockTimestamp() - 1;
+        await expect(
+            swapPair.connect(user0).swapExactTokensForTokens(
+                toWei(10), // amountIn
+                toWei(0.9),   // amountOutMin
+                token1.address, // tokenIn
+                token2.address,  // tokenOut
+                user0.address,
+                deadline
+            )
+        ).to.be.revertedWithCustomError(swapPair, "TransactionExpired")
+    });
     
 });
