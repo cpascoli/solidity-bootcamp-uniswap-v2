@@ -403,31 +403,15 @@ contract SwapPair is Initializable, ISwapPoolPair, ERC20, IERC3156FlashLender, R
         (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
         if(amount0Out >= _reserve0 || amount1Out >= _reserve1) revert InsufficientLiquidity();
 
-
-        uint balance0;
-        uint balance1;
-
-        { // scope for _token{0,1}, avoids stack too deep errors
-        address _token0 = token0;
-        address _token1 = token1;
-
-        if (amount0Out > 0) SafeERC20.safeTransfer(IERC20(_token0), recipient, amount0Out);
-        if (amount1Out > 0) SafeERC20.safeTransfer(IERC20(_token1), recipient, amount1Out);
+        if (amount0Out > 0) SafeERC20.safeTransfer(IERC20(token0), recipient, amount0Out);
+        if (amount1Out > 0) SafeERC20.safeTransfer(IERC20(token1), recipient, amount1Out);
         
-        balance0 = IERC20(_token0).balanceOf(address(this));
-        balance1 = IERC20(_token1).balanceOf(address(this));
-        }
+        uint balance0 = IERC20(token0).balanceOf(address(this));
+        uint balance1 = IERC20(token1).balanceOf(address(this));
 
         uint amount0In = balance0 > _reserve0 - amount0Out ? balance0 - (_reserve0 - amount0Out) : 0;
         uint amount1In = balance1 > _reserve1 - amount1Out ? balance1 - (_reserve1 - amount1Out) : 0;
         if(amount0In == 0 && amount1In == 0) revert InsufficientIntputAmount();
-
-
-        // { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
-        // uint balance0Adjusted = (balance0 * SWAP_FEE_FACTOR) - (amount0In * SWAP_FEE); // 0.3% fee
-        // uint balance1Adjusted = (balance1 * SWAP_FEE_FACTOR) - (amount1In * SWAP_FEE); // 0.3% fee
-        // require(balance0Adjusted * balance1Adjusted >= uint(_reserve0) * _reserve1 * SWAP_FEE_FACTOR**2, 'Invalid K');
-        // }
 
         _update(balance0, balance1, _reserve0, _reserve1);
 

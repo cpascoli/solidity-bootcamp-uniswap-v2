@@ -40,7 +40,6 @@ contract FlashLoanClient is IERC3156FlashBorrower {
      * @param token The loan currency.
      * @param amount The amount of tokens lent.
      * @param fee The additional amount of tokens to repay.
-     * @param data Arbitrary data structure, intended to contain user-defined parameters.
      * @return The keccak256 hash of "ERC3156FlashBorrower.onFlashLoan"
      */
     function onFlashLoan(
@@ -48,7 +47,7 @@ contract FlashLoanClient is IERC3156FlashBorrower {
         address token,
         uint256 amount,
         uint256 fee,
-        bytes calldata data
+        bytes calldata
     ) external returns (bytes32) {
         require(msg.sender == address(lender), "FlashBorrower: Untrusted lender");
         require(initiator == address(this), "FlashBorrower: Untrusted loan initiator");
